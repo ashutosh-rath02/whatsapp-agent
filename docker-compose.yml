@@ -1,0 +1,21 @@
+# Run the agent as a persistent, auto-restarting service.
+#   docker compose up -d --build
+#   docker compose logs -f        # scan the QR shown here on first run
+services:
+  whatsapp-agent:
+    build:
+      context: .
+      args:
+        # Set to "true" to bake in ffmpeg + yt-dlp for Instagram reel audio.
+        INSTALL_MEDIA_TOOLS: "false"
+    image: whatsapp-agent
+    container_name: whatsapp-agent
+    env_file: .env
+    restart: unless-stopped
+    init: true                # reap orphaned Chromium child processes
+    shm_size: "512m"          # headroom for headless Chromium
+    volumes:
+      - wa-session:/data      # persists the WhatsApp session across restarts
+
+volumes:
+  wa-session:

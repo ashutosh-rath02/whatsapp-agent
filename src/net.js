@@ -1,20 +1,26 @@
 // Network hardening. Imported for its side effects BEFORE any fetch happens.
 //
-// On many Windows / corporate networks the default Node fetch (undici) stalls
-// on IPv6 (AAAA) connection attempts and trips its 10s connect timeout, which
-// surfaces as intermittent "fetch failed / UND_ERR_CONNECT_TIMEOUT". We:
-//   1. Prefer IPv4 DNS results.
-//   2. Install a global dispatcher with a generous connect timeout, IPv4
-//      family, and built-in retries.
+// Two layers:
+//   1. Resilience (always on): a global dispatcher with a generous connect
+//      timeout and automatic retries on transient connection failures.
+//   2. IPv4 forcing (conditional): some Windows / corporate networks stall on
+//      IPv6 (AAAA) and trip the connect timeout. Forcing IPv4 fixes that, but
+//      it's wrong on IPv6-only hosts — so it's gated.
+//
+// Control with NET_FORCE_IPV4 = auto (default: on for Windows only) | true | false.
 import dns from 'node:dns';
 import { setGlobalDispatcher, Agent, RetryAgent } from 'undici';
 
-dns.setDefaultResultOrder('ipv4first');
+const mode = (process.env.NET_FORCE_IPV4 || 'auto').toLowerCase();
+const forceIpv4 =
+  mode === 'true' || mode === '1' || (mode === 'auto' && process.platform === 'win32');
+
+if (forceIpv4) dns.setDefaultResultOrder('ipv4first');
 
 const base = new Agent({
   connect: {
     timeout: 30_000, // 30s to establish a connection (default was 10s)
-    family: 4, // force IPv4 to dodge IPv6 black-holes
+    ...(forceIpv4 ? { family: 4 } : {}),
   },
   headersTimeout: 60_000,
   bodyTimeout: 120_000,

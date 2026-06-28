@@ -78,6 +78,18 @@ scripts/
   smoke.js       run the pipeline without WhatsApp/Chromium
 ```
 
+## Deployment
+
+This is a stateful service (persistent Chromium session) — host it on an
+always-on instance with a persistent volume (AWS EC2/Lightsail + Docker), not on
+serverless. See **[DEPLOY.md](DEPLOY.md)** for the full AWS walkthrough. Quick
+local container run:
+
+```bash
+docker compose up -d --build
+docker compose logs -f   # scan the QR on first run
+```
+
 ## Notes
 
 - **Unofficial WhatsApp automation.** `whatsapp-web.js` drives WhatsApp Web under

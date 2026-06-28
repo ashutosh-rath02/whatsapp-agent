@@ -28,6 +28,11 @@ export const config = {
     model: process.env.WHISPER_MODEL || 'whisper-1',
     // Skip downloads larger than this (Whisper API caps at 25 MB).
     maxBytes: Number(process.env.TRANSCRIBE_MAX_BYTES || 24 * 1024 * 1024),
+    // For login-gated sites (Instagram), yt-dlp needs auth cookies. Point this
+    // at an exported Netscape-format cookies.txt, or name a browser to read
+    // from (the latter is blocked by Chrome's app-bound encryption on Windows).
+    ytdlpCookiesFile: process.env.YTDLP_COOKIES_FILE || '',
+    ytdlpCookiesBrowser: process.env.YTDLP_COOKIES_BROWSER || '',
   },
   agent: {
     // Only act on self-chat messages whose plain text is at least this long

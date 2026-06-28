@@ -1,7 +1,7 @@
 import { findUrls, textWithoutUrls, extractUrl } from './extract.js';
 import { research } from './research.js';
 import { summarize } from './summarize.js';
-import { transcribeUrl } from './transcribe.js';
+import { transcribeMedia } from './transcribe.js';
 import { config } from './config.js';
 import { log } from './logger.js';
 
@@ -32,9 +32,10 @@ export async function processMessage(text) {
   // 1b. Transcribe any video (reel / tweet) so spoken-only content is captured.
   if (config.transcription.enabled) {
     for (const a of articles) {
-      if (!a.ok || !a.videoUrl) continue;
+      if (!a.ok) continue;
+      if (!a.videoUrl && a.kind !== 'instagram') continue; // nothing to transcribe
       log.info('  ↳ transcribing video audio…');
-      const tr = await transcribeUrl(a.videoUrl);
+      const tr = await transcribeMedia(a);
       if (tr.ok) {
         a.text = `${a.text}\n\n[Spoken transcript]\n${tr.text}`.slice(0, 14000);
         a.transcribed = true;

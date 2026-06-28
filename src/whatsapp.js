@@ -2,18 +2,45 @@ import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth } = pkg;
 import qrcode from 'qrcode-terminal';
 import QR from 'qrcode';
+import fs from 'node:fs';
 import path from 'node:path';
 
 import { config } from './config.js';
 import { log } from './logger.js';
 import { shouldProcess, processMessage } from './pipeline.js';
 
+const AUTH_PATH = process.env.WWEBJS_AUTH_PATH || '.wwebjs_auth';
+
+/**
+ * Remove a stale Chromium singleton lock left behind by a hard crash / kill.
+ * Safe because this app runs single-instance; without it, a restart fails with
+ * "browser is already running for <userDataDir>".
+ */
+function clearStaleLock() {
+  const sessionDir = path.join(AUTH_PATH, 'session');
+  try {
+    for (const f of fs.readdirSync(sessionDir)) {
+      if (f.startsWith('Singleton')) fs.rmSync(path.join(sessionDir, f), { force: true });
+    }
+  } catch {
+    /* dir may not exist yet — fine */
+  }
+}
+
 export function createClient() {
+  clearStaleLock();
   const client = new Client({
-    authStrategy: new LocalAuth({ dataPath: '.wwebjs_auth' }),
+    authStrategy: new LocalAuth({ dataPath: AUTH_PATH }),
     puppeteer: {
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      // PUPPETEER_EXECUTABLE_PATH lets the container use system Chromium.
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage', // avoid /dev/shm exhaustion in containers
+        '--disable-gpu',
+      ],
     },
   });
 
