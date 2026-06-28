@@ -1,0 +1,61 @@
+import { findUrls, textWithoutUrls, extractUrl } from './extract.js';
+import { research } from './research.js';
+import { summarize } from './summarize.js';
+import { log } from './logger.js';
+
+/**
+ * Decide whether a self-chat message is worth acting on.
+ */
+export function shouldProcess(text, minTextLength) {
+  if (!text) return false;
+  if (findUrls(text).length > 0) return true; // any link → process
+  return text.trim().length >= minTextLength; // otherwise needs some substance
+}
+
+/**
+ * Run the full explore → research → summarize pipeline on a message.
+ * @returns {Promise<{ reply: string, meta: object }>}
+ */
+export async function processMessage(text) {
+  const urls = findUrls(text);
+  const userNote = textWithoutUrls(text);
+
+  // 1. Explore: extract readable content for each shared link.
+  const articles = [];
+  for (const url of urls) {
+    log.info('  ↳ extracting', url);
+    articles.push(await extractUrl(url));
+  }
+
+  // 2. Build a research query from the best signal we have.
+  const query = buildQuery({ articles, userNote, text });
+  log.info('  ↳ researching:', query);
+
+  // 3. Research: find sources / citations.
+  const researchResult = await research(query);
+
+  // 4. Summarize everything into a cited briefing.
+  log.info('  ↳ summarizing…');
+  const reply = await summarize({ userNote, articles, research: researchResult });
+
+  return {
+    reply,
+    meta: {
+      urls,
+      query,
+      extracted: articles.filter((a) => a.ok).length,
+      sources: researchResult.results?.length || 0,
+      researchOk: researchResult.ok,
+    },
+  };
+}
+
+function buildQuery({ articles, userNote, text }) {
+  const firstGood = articles.find((a) => a.ok && a.title);
+  if (firstGood) {
+    return userNote ? `${firstGood.title} — ${userNote}` : firstGood.title;
+  }
+  // No usable article title: fall back to the user's text (sans urls), else raw.
+  const base = userNote || text;
+  return base.slice(0, 380);
+}

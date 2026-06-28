@@ -1,0 +1,25 @@
+{
+  "name": "whatsapp-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Send links/text to your WhatsApp self-chat; an agent explores it, researches sources, and replies with a cited summary.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@extractus/article-extractor": "^8.1.0",
+    "@google/generative-ai": "^0.24.1",
+    "dotenv": "^17.4.2",
+    "openai": "^6.45.0",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0",
+    "undici": "^7.28.0",
+    "whatsapp-web.js": "^1.34.7"
+  }
+}
