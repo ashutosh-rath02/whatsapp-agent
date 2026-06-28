@@ -51,11 +51,17 @@ export async function processMessage(text) {
 }
 
 function buildQuery({ articles, userNote, text }) {
-  const firstGood = articles.find((a) => a.ok && a.title);
+  const firstGood = articles.find((a) => a.ok);
   if (firstGood) {
-    return userNote ? `${firstGood.title} — ${userNote}` : firstGood.title;
+    // For social posts the title is generic ("Tweet by …"); the content is the
+    // real signal. For articles the title is the best query seed.
+    const social = firstGood.kind === 'tweet' || firstGood.kind === 'instagram';
+    const basis = social
+      ? firstGood.text || firstGood.title
+      : firstGood.title || firstGood.text;
+    const seed = (basis || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+    return userNote ? `${seed} — ${userNote}`.slice(0, 380) : seed;
   }
-  // No usable article title: fall back to the user's text (sans urls), else raw.
-  const base = userNote || text;
-  return base.slice(0, 380);
+  // No usable extraction: fall back to the user's text (sans urls), else raw.
+  return (userNote || text).slice(0, 380);
 }

@@ -33,8 +33,10 @@ export async function summarize({ userNote = '', articles = [], research = {} })
     parts.push('\nSHARED LINK CONTENT:');
     articles.forEach((a, i) => {
       if (a.ok) {
+        const kind = a.kind ? `${a.kind}` : 'link';
+        const caveat = a.note ? `  [${a.note}]` : '';
         parts.push(
-          `\n[Link ${i + 1}] ${a.title || '(untitled)'} — ${a.source} (${a.url})\n${a.text}`,
+          `\n[${kind} ${i + 1}] ${a.title || '(untitled)'} — ${a.source} (${a.url})${caveat}\n${a.text}`,
         );
       } else {
         parts.push(`\n[Link ${i + 1}] ${a.url} — could not extract (${a.reason}).`);

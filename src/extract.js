@@ -1,5 +1,7 @@
 import { extract as extractArticle } from '@extractus/article-extractor';
 import { log } from './logger.js';
+import { BROWSER_UA, fetchText, stripTags, decodeEntities, parseOgMeta } from './html.js';
+import { classifyUrl, extractTweet, extractInstagram } from './social.js';
 
 // Matches http/https URLs in a blob of text.
 const URL_RE = /https?:\/\/[^\s<>()]+[^\s<>().,!?'"]/gi;
@@ -18,53 +20,71 @@ export function textWithoutUrls(text = '') {
 }
 
 /**
- * Fetch + parse the main readable content of a URL.
- * Returns { url, ok, title, author, published, text, excerpt, source } — `ok`
- * is false (with a `reason`) when extraction fails (paywall, JS-only, blocked).
+ * Explore a single URL. Dispatches to a platform-specific extractor for
+ * Twitter/X and Instagram (which block generic extraction), otherwise reads
+ * the page as an article. Returns a normalized record; `ok:false` carries a
+ * `reason` when nothing usable could be extracted.
  */
 export async function extractUrl(url) {
+  const kind = classifyUrl(url);
+  if (kind === 'twitter') return extractTweet(url);
+  if (kind === 'instagram') return extractInstagram(url);
+  return extractArticleUrl(url);
+}
+
+async function extractArticleUrl(url) {
   try {
-    const article = await extractArticle(url, {}, {
-      // a desktop UA helps with sites that gate bots
-      headers: {
-        'user-agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
-      },
-    });
-    if (!article || !article.content) {
-      return { url, ok: false, reason: 'no readable content extracted' };
+    const article = await extractArticle(url, {}, { headers: { 'user-agent': BROWSER_UA } });
+    if (article?.content) {
+      const text = decodeEntities(stripTags(article.content));
+      return {
+        url,
+        ok: true,
+        kind: 'article',
+        title: article.title || '',
+        author: article.author || '',
+        published: article.published || '',
+        source: article.source || hostOf(url),
+        excerpt: article.description || '',
+        text: text.slice(0, 12000), // cap to keep prompts sane
+      };
     }
-    const text = htmlToText(article.content);
-    return {
-      url,
-      ok: true,
-      title: article.title || '',
-      author: article.author || '',
-      published: article.published || '',
-      source: article.source || hostOf(url),
-      excerpt: article.description || '',
-      text: text.slice(0, 12000), // cap to keep prompts sane
-    };
+    return ogFallback(url, 'no readable content extracted');
   } catch (err) {
-    log.debug('extractUrl failed', url, err?.message);
-    return { url, ok: false, reason: err?.message || 'fetch/parse error' };
+    log.debug('extractArticleUrl failed', url, err?.message);
+    return ogFallback(url, err?.message || 'fetch/parse error');
   }
 }
 
-function htmlToText(html = '') {
-  return html
-    .replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '')
-    .replace(/<\/(p|div|h[1-6]|li|br)\s*>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&quot;/gi, '"')
-    .replace(/\n{3,}/g, '\n\n')
-    .replace(/[ \t]{2,}/g, ' ')
-    .trim();
+/**
+ * When full article extraction fails (paywall, JS-only, bot-gated), salvage
+ * the page's Open Graph title/description so we still have something to work
+ * with instead of nothing.
+ */
+async function ogFallback(url, reason) {
+  try {
+    const { ok, status, text } = await fetchText(url);
+    if (ok) {
+      const og = parseOgMeta(text);
+      const title = og['og:title'] || '';
+      const desc = og['og:description'] || '';
+      if (title || desc) {
+        return {
+          url,
+          ok: true,
+          kind: 'article',
+          title,
+          source: og['og:site_name'] || hostOf(url),
+          text: [title, desc].filter(Boolean).join('\n').slice(0, 4000),
+          partial: true,
+          note: `meta-only (${reason})`,
+        };
+      }
+    }
+    return { url, ok: false, reason: ok ? reason : `${reason} (http ${status})` };
+  } catch (e) {
+    return { url, ok: false, reason: `${reason}; og fallback failed: ${e?.message}` };
+  }
 }
 
 export function hostOf(url) {

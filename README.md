@@ -16,8 +16,10 @@ You → WhatsApp self-chat
    5. REPLY     post the briefing back into the same chat
 ```
 
-**Phase 1 (current): plain text + web links.** Instagram reels and Twitter/X
-are Phase 2 (they need dedicated, more fragile extractors).
+**Supported inputs:** plain text, web links/articles, **Twitter/X** posts (via
+fxtwitter), and **Instagram** posts/reels (caption + metadata). For Instagram,
+only the caption/metadata is read today — transcribing the video's spoken audio
+is a planned Phase 2b (download + Whisper).
 
 ## Setup
 
@@ -63,7 +65,9 @@ src/
   net.js         network hardening (IPv4 + connect-timeout/retries)
   whatsapp.js    whatsapp-web.js client + self-chat listener
   pipeline.js    orchestrates explore → research → summarize
-  extract.js     URL detection + readable-content extraction
+  extract.js     URL detection + dispatch (article / tweet / instagram)
+  social.js      Twitter/X (fxtwitter) + Instagram (crawler-UA og) extractors
+  html.js        shared fetch + HTML/OG-meta helpers
   research.js    Tavily web search
   summarize.js   prompt + WhatsApp-formatted briefing
   llm/           provider abstraction (openai.js, gemini.js, index.js)
