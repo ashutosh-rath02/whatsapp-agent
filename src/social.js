@@ -64,6 +64,7 @@ export async function extractTweet(url) {
       author,
       source: 'x.com',
       published: t.created_at || '',
+      videoUrl: t.media?.videos?.[0]?.url || null, // for Whisper transcription
       text: [body, media, `(${stats})`].filter(Boolean).join('\n\n').slice(0, 8000),
     };
   } catch (e) {
@@ -120,6 +121,7 @@ export async function extractInstagram(url) {
     // og:description carries engagement + date + caption, e.g.
     // '60M likes, 4M comments - world_record_egg on January 4, 2019: "…"'
     const handle = (desc.match(/-\s*([A-Za-z0-9._]+)\s+on\s+[A-Z]/) || [])[1] || '';
+    const videoUrl = og['og:video:secure_url'] || og['og:video'] || null;
     return {
       url,
       ok: true,
@@ -127,8 +129,9 @@ export async function extractInstagram(url) {
       title: title || 'Instagram post',
       author: handle ? `@${handle}` : '',
       source: 'instagram.com',
+      videoUrl, // reel MP4, when present — transcribed in the pipeline
       text: [title, desc].filter(Boolean).join('\n').slice(0, 8000),
-      note: 'caption/metadata only — video & spoken audio not transcribed (Phase 2b)',
+      note: videoUrl ? 'caption + transcribed audio' : 'caption/metadata only (no video)',
     };
   } catch (e) {
     log.debug('extractInstagram failed', e?.message);

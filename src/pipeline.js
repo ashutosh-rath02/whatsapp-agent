@@ -1,6 +1,8 @@
 import { findUrls, textWithoutUrls, extractUrl } from './extract.js';
 import { research } from './research.js';
 import { summarize } from './summarize.js';
+import { transcribeUrl } from './transcribe.js';
+import { config } from './config.js';
 import { log } from './logger.js';
 
 /**
@@ -27,6 +29,23 @@ export async function processMessage(text) {
     articles.push(await extractUrl(url));
   }
 
+  // 1b. Transcribe any video (reel / tweet) so spoken-only content is captured.
+  if (config.transcription.enabled) {
+    for (const a of articles) {
+      if (!a.ok || !a.videoUrl) continue;
+      log.info('  ↳ transcribing video audio…');
+      const tr = await transcribeUrl(a.videoUrl);
+      if (tr.ok) {
+        a.text = `${a.text}\n\n[Spoken transcript]\n${tr.text}`.slice(0, 14000);
+        a.transcribed = true;
+      } else {
+        a.transcribeError = tr.reason;
+        a.note = a.note ? `${a.note}; transcript unavailable (${tr.reason})` : `transcript unavailable (${tr.reason})`;
+        log.debug('  ↳ transcription skipped:', tr.reason);
+      }
+    }
+  }
+
   // 2. Build a research query from the best signal we have.
   const query = buildQuery({ articles, userNote, text });
   log.info('  ↳ researching:', query);
@@ -44,6 +63,7 @@ export async function processMessage(text) {
       urls,
       query,
       extracted: articles.filter((a) => a.ok).length,
+      transcribed: articles.filter((a) => a.transcribed).length,
       sources: researchResult.results?.length || 0,
       researchOk: researchResult.ok,
     },

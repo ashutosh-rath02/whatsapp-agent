@@ -17,9 +17,9 @@ You → WhatsApp self-chat
 ```
 
 **Supported inputs:** plain text, web links/articles, **Twitter/X** posts (via
-fxtwitter), and **Instagram** posts/reels (caption + metadata). For Instagram,
-only the caption/metadata is read today — transcribing the video's spoken audio
-is a planned Phase 2b (download + Whisper).
+fxtwitter), and **Instagram** posts/reels (caption + metadata). Reels and tweets
+that contain video are **transcribed with Whisper** (download `og:video` / tweet
+MP4 → OpenAI `whisper-1`) so spoken-only content is understood too.
 
 ## Setup
 
@@ -53,6 +53,8 @@ is a planned Phase 2b (download + Whisper).
 | `GEMINI_API_KEY` / `GEMINI_MODEL` | — / `gemini-1.5-flash` | Gemini summarizer |
 | `TAVILY_API_KEY` | — | Web research; if empty, research is skipped |
 | `RESEARCH_MAX_RESULTS` | `5` | Sources per query |
+| `TRANSCRIBE_MEDIA` | `true` | Transcribe reel/tweet video audio (needs `OPENAI_API_KEY`) |
+| `WHISPER_MODEL` | `whisper-1` | Transcription model |
 | `MIN_TEXT_LENGTH` | `12` | Min length for a no-link note to trigger |
 | `DEBUG` | `false` | Verbose logging |
 
@@ -68,6 +70,7 @@ src/
   extract.js     URL detection + dispatch (article / tweet / instagram)
   social.js      Twitter/X (fxtwitter) + Instagram (crawler-UA og) extractors
   html.js        shared fetch + HTML/OG-meta helpers
+  transcribe.js  download reel/tweet video → Whisper transcript
   research.js    Tavily web search
   summarize.js   prompt + WhatsApp-formatted briefing
   llm/           provider abstraction (openai.js, gemini.js, index.js)

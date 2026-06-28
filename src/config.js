@@ -22,6 +22,13 @@ export const config = {
     tavilyApiKey: process.env.TAVILY_API_KEY || '',
     maxResults: Number(process.env.RESEARCH_MAX_RESULTS || 5),
   },
+  transcription: {
+    // Transcribe reel / tweet video audio with Whisper. Needs OPENAI_API_KEY.
+    enabled: bool(process.env.TRANSCRIBE_MEDIA, true) && !!process.env.OPENAI_API_KEY,
+    model: process.env.WHISPER_MODEL || 'whisper-1',
+    // Skip downloads larger than this (Whisper API caps at 25 MB).
+    maxBytes: Number(process.env.TRANSCRIBE_MAX_BYTES || 24 * 1024 * 1024),
+  },
   agent: {
     // Only act on self-chat messages whose plain text is at least this long
     // (links always trigger regardless of length).
