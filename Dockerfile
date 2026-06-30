@@ -39,9 +39,13 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY src ./src
+COPY scripts ./scripts
 
-# Session/auth lives here — mount a persistent volume at /data.
+# Session/auth + the JSON datastore live here — mount a persistent volume at /data.
 VOLUME ["/data"]
+
+# Web dashboard (saved items / reminders). Map this in docker-compose / -p.
+EXPOSE 8080
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "src/index.js"]

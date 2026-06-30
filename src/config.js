@@ -40,6 +40,24 @@ export const config = {
     minTextLength: Number(process.env.MIN_TEXT_LENGTH || 12),
     // Marker prepended to the agent's own replies so it never processes them.
     replyMarker: '🔎 *Agent summary*',
+    // Explicit keyword routing (save / ask / remind / list …). Off = always research.
+    commandsEnabled: bool(process.env.COMMANDS_ENABLED, true),
+    // IANA timezone for displaying reminder/saved times (e.g. Asia/Kolkata).
+    // Falls back to TZ, else the host default.
+    timezone: process.env.AGENT_TZ || process.env.TZ || '',
+  },
+  reminders: {
+    enabled: bool(process.env.REMINDERS_ENABLED, true),
+    // How often to check for due reminders (min 5s).
+    pollMs: Math.max(5000, Number(process.env.REMINDERS_POLL_MS || 30000)),
+  },
+  web: {
+    // Plain web dashboard for browsing saved items / reminders.
+    enabled: bool(process.env.WEB_ENABLED, true),
+    port: Number(process.env.WEB_PORT || 8080),
+    user: process.env.WEB_USER || 'admin',
+    // If empty, the dashboard binds to loopback only (never exposed unauthenticated).
+    password: process.env.WEB_PASSWORD || '',
   },
   debug: bool(process.env.DEBUG, false),
 };

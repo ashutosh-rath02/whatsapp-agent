@@ -23,6 +23,10 @@ auth_info/
 session/
 whatsapp-qr.png
 
+# Local datastore (saved items / reminders)
+agent-data.json
+agent-data.json.tmp
+
 # Logs
 *.log
 logs/

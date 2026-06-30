@@ -4,6 +4,8 @@ node_modules
 .wwebjs_auth
 .wwebjs_cache
 whatsapp-qr.png
+agent-data.json
+agent-data.json.tmp
 .env
 .env.*
 !.env.example

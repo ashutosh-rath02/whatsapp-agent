@@ -1,11 +1,15 @@
 import { config, assertRuntimeConfig } from './config.js';
 import { log } from './logger.js';
 import { createClient } from './whatsapp.js';
+import { startWebServer } from './web.js';
+import { dbPath } from './store.js';
 
 function banner() {
-  log.info('whatsapp-agent — Phase 1 (links + text)');
+  log.info('whatsapp-agent — commands + research');
   log.info(`LLM provider: ${config.llm.provider} (${config.llm[config.llm.provider]?.model})`);
   log.info(`Research: ${config.research.tavilyApiKey ? 'Tavily' : 'disabled (no TAVILY_API_KEY)'}`);
+  log.info(`Storage: ${dbPath()}`);
+  log.info(`Commands: ${config.agent.commandsEnabled ? 'on (save / ask / remind / list)' : 'off'}`);
 }
 
 async function main() {
@@ -19,9 +23,15 @@ async function main() {
   }
 
   const client = createClient();
+  const web = config.web.enabled ? startWebServer() : null;
 
   const shutdown = async (sig) => {
     log.info(`\n${sig} received, shutting down…`);
+    try {
+      if (web) await web.stop();
+    } catch {
+      /* ignore */
+    }
     try {
       await client.destroy();
     } catch {

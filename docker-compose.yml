@@ -14,8 +14,12 @@ services:
     restart: unless-stopped
     init: true                # reap orphaned Chromium child processes
     shm_size: "512m"          # headroom for headless Chromium
+    ports:
+      # Web dashboard. Host:Container. Requires WEB_PASSWORD set in .env to bind
+      # publicly, and the port opened in your EC2 security group (ideally to your IP).
+      - "8080:8080"
     volumes:
-      - wa-session:/data      # persists the WhatsApp session across restarts
+      - wa-session:/data      # persists the WhatsApp session + saved data across restarts
 
 volumes:
   wa-session:

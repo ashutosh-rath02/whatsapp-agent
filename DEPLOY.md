@@ -10,8 +10,11 @@ instance with a persistent volume** — EC2 (or Lightsail), **not** Lambda/Farga
   headless Chromium is memory-hungry.
 - **OS:** Ubuntu 22.04/24.04 LTS.
 - **Disk:** 16 GB gp3 EBS (the session + image fit easily).
-- **Security group:** no inbound ports needed — the agent only makes outbound
-  connections (WhatsApp, OpenAI/Gemini, Tavily). Keep SSH (22) restricted to you.
+- **Security group:** the agent itself only makes outbound connections. To reach
+  the **web dashboard**, open its port (default **8080**) inbound — ideally
+  restricted to your own IP — and keep SSH (22) restricted to you too. If you
+  don't want the dashboard public, leave the port closed and reach it over an
+  SSH tunnel instead: `ssh -L 8080:localhost:8080 user@<ip>`.
 
 ## 2. Install Docker
 
@@ -26,6 +29,13 @@ sudo usermod -aG docker $USER && newgrp docker
 git clone <your-repo-url> whatsapp-agent && cd whatsapp-agent
 cp .env.example .env
 nano .env          # paste OPENAI_API_KEY / GEMINI_API_KEY / TAVILY_API_KEY
+```
+
+In `.env`, to use the dashboard on your server IP also set:
+
+```bash
+WEB_PASSWORD=something-strong   # required to expose the dashboard publicly
+AGENT_TZ=Asia/Kolkata           # so reminder times show in your zone (box is UTC)
 ```
 
 `.env` stays on the instance and is gitignored. For stronger secret handling,
@@ -45,7 +55,12 @@ On first run the logs print a **QR code** — scan it with your phone:
 volume, so you won't rescan on restarts/redeploys.
 
 Then send a link or note to your **"Message Yourself"** chat and watch for the
-✅ reply.
+✅ reply. Try the commands too: `save <note>`, `remind me in 1h: test`, `list`,
+`help`.
+
+**Dashboard:** with `WEB_PASSWORD` set and port 8080 open, browse to
+`http://<your-ec2-ip>:8080` (user `admin`, the password you chose) to see your
+saved items and reminders, with one-click done/cancel.
 
 ## 5. Operate
 
@@ -96,6 +111,11 @@ reel-audio transcription.
 | `TAVILY_API_KEY` | web research |
 | `TRANSCRIBE_MEDIA` | enable tweet/reel audio transcription |
 | `YTDLP_COOKIES_FILE` | Instagram auth for reel audio |
+| `COMMANDS_ENABLED` | keyword routing (save / ask / remind / list); default on |
+| `AGENT_TZ` | timezone for showing reminder/saved times (box is UTC) |
+| `WEB_ENABLED`, `WEB_PORT` | dashboard on/off and port (default 8080) |
+| `WEB_USER`, `WEB_PASSWORD` | dashboard auth; no password ⇒ localhost-only |
+| `DB_PATH` | saved-data file (default `/data/agent-data.json` in the image) |
 | `NET_FORCE_IPV4` | `auto` (Windows-only) / `true` / `false` — leave default on AWS |
 | `PUPPETEER_EXECUTABLE_PATH` | set by the image to system Chromium |
 | `WWEBJS_AUTH_PATH` | session location (set to `/data/.wwebjs_auth` in the image) |
