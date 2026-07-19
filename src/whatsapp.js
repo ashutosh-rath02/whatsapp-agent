@@ -79,6 +79,9 @@ export function createClient() {
   });
 
   client.on('authenticated', () => log.info('Authenticated ✔'));
+  // Sync progress between 'authenticated' and 'ready' — without this a slow or
+  // stalled sync looks identical to a hang.
+  client.on('loading_screen', (pct, message) => log.info(`Syncing… ${pct}% ${message || ''}`));
   client.on('auth_failure', (m) => log.error('Auth failure:', m));
   client.on('disconnected', (r) => log.warn('Disconnected:', r));
 
