@@ -12,7 +12,7 @@ const AUTH_PATH = process.env.WWEBJS_AUTH_PATH || '.wwebjs_auth';
 const DATA_DIR = process.env.DATA_DIR || path.dirname(path.resolve(AUTH_PATH));
 const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'agent-data.json');
 
-const EMPTY = () => ({ items: [], reminders: [], meta: {}, seq: { item: 0, reminder: 0 } });
+const EMPTY = () => ({ items: [], reminders: [], news: [], meta: {}, seq: { item: 0, reminder: 0 } });
 
 let state = null;
 
@@ -26,6 +26,7 @@ function load() {
   // Be tolerant of an older/partial file shape.
   state.items ||= [];
   state.reminders ||= [];
+  state.news ||= [];
   state.meta ||= {};
   state.seq ||= { item: 0, reminder: 0 };
   return state;
@@ -152,6 +153,56 @@ export function cancelReminder(id) {
   r.firedAt = Date.now();
   persist();
   return true;
+}
+
+// ── News items (watch feature) ───────────────────────────────────────────────
+// The `key` (source id + content hash) is the dedup identity: an item enters
+// the store once, gets digested once, and is never re-reported.
+
+export function addNews(items) {
+  const s = load();
+  const seen = new Set(s.news.map((n) => n.key));
+  const added = [];
+  for (const it of items) {
+    if (!it.key || seen.has(it.key)) continue;
+    seen.add(it.key);
+    const entry = { ...it, seenAt: Date.now(), digestedAt: null };
+    s.news.push(entry);
+    added.push(entry);
+  }
+  if (added.length) {
+    // Prune: keep the newest ~3000 digested entries (never drop undigested).
+    if (s.news.length > 4000) {
+      const keep = s.news.filter((n) => !n.digestedAt);
+      const digested = s.news.filter((n) => n.digestedAt).sort((a, b) => b.seenAt - a.seenAt);
+      s.news = [...keep, ...digested.slice(0, 3000 - keep.length)];
+    }
+    persist();
+  }
+  return added;
+}
+
+export function pendingNews() {
+  return load().news.filter((n) => !n.digestedAt);
+}
+
+export function markNewsDigested(keys) {
+  const s = load();
+  const set = new Set(keys);
+  let hit = false;
+  for (const n of s.news) {
+    if (set.has(n.key) && !n.digestedAt) {
+      n.digestedAt = Date.now();
+      hit = true;
+    }
+  }
+  if (hit) persist();
+}
+
+export function newsCountBySource() {
+  const out = {};
+  for (const n of load().news) out[n.source] = (out[n.source] || 0) + 1;
+  return out;
 }
 
 // ── Meta (key/value) ─────────────────────────────────────────────────────────

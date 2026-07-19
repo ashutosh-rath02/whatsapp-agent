@@ -11,6 +11,7 @@ function banner() {
   log.info(`Research: ${config.research.tavilyApiKey ? 'Tavily' : 'disabled (no TAVILY_API_KEY)'}`);
   log.info(`Storage: ${dbPath()}`);
   log.info(`Commands: ${config.agent.commandsEnabled ? 'on (save / ask / remind / list)' : 'off'}`);
+  log.info(`News: ${config.news.enabled ? `daily digest at ${config.news.digestTime} (${config.agent.timezone || 'host tz'})` : 'off'}`);
 }
 
 async function main() {

@@ -113,6 +113,9 @@ reel-audio transcription.
 | `YTDLP_COOKIES_FILE` | Instagram auth for reel audio |
 | `COMMANDS_ENABLED` | keyword routing (save / ask / remind / list); default on |
 | `PLUGINS_DISABLED` | comma-separated plugin names to switch off (e.g. `find,cancel`) |
+| `NEWS_ENABLED`, `NEWS_DIGEST_TIME` | morning AI digest on/off and delivery time (HH:MM in `AGENT_TZ`) |
+| `NEWS_SOURCES_DISABLED` | mute news sources by id (see `src/newsSources.js`) |
+| `NEWS_LLM_PICKS`, `NEWS_MAX_ITEMS` | LLM top-picks section; digest length cap |
 | `AGENT_TZ` | timezone for showing reminder/saved times (box is UTC) |
 | `WEB_ENABLED`, `WEB_PORT` | dashboard on/off and port (default 8080) |
 | `WEB_USER`, `WEB_PASSWORD` | dashboard auth; no password ⇒ localhost-only |

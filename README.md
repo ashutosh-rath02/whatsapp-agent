@@ -35,11 +35,26 @@ Not everything needs a research reply. Steer each message with a keyword
 | `find <text>` | 🔍 Search saved items. |
 | `done <#id>` | ✅ Clear a saved item (id from `list`). |
 | `cancel <Rid>` | 🗑️ Drop a reminder. |
+| `news` | 🗞️ AI digest on demand · `news sources` lists what's watched. |
 | `help` | ❓ Show this cheatsheet in chat. |
 
 Saved items and reminders live in a small JSON file on the persistent volume,
 so they survive restarts. Reminders are checked every ~30s and delivered into
 your self-chat — they fire even after a redeploy.
+
+## Morning AI digest
+
+Every morning (default **08:00** in `AGENT_TZ`) the agent polls ~55 sources —
+lab blogs, agent-tooling blogs, practitioner newsletters, industry news,
+HF Daily Papers, arXiv cs.MA, Hacker News, r/LocalLLaMA — dedupes against
+everything it has already shown you, and delivers a tiered digest into your
+self-chat, with 3–5 LLM-picked top headlines up top. `news` fetches one on
+demand; an item is only ever reported once.
+
+- Catalog: `src/newsSources.js` (probe-verified; audit trail in `docs/SOURCES.md`)
+- Mute a source without a rebuild: `NEWS_SOURCES_DISABLED=verge,zvi`
+- First deploy: run `node scripts/news-live.js --seed` once (inside the
+  container) so day one isn't a 150-item archive dump.
 
 ## Dashboard
 
@@ -104,9 +119,12 @@ src/
   plugins/       one file per feature — see "Writing a plugin" below
     index.js       registry: loads the directory, routes keywords, generates help
     research.js    the fallback: explore → research → summarize
-    save.js  remind.js  list.js  find.js  done.js  cancel.js  help.js
-  store.js       JSON datastore (saved items, reminders, meta) on /data
+    save.js  remind.js  list.js  find.js  done.js  cancel.js  news.js  help.js
+  store.js       JSON datastore (saved items, reminders, news, meta) on /data
   reminders.js   scheduler that delivers due reminders into the self-chat
+  news.js        news engine: poll sources → dedupe → digest → morning delivery
+  newsSources.js the ~55-stream watch catalog (feeds, scrapes, HN API)
+  feeds.js       dependency-free RSS/Atom item extraction
   web.js         plain HTML dashboard (built-in http, no deps)
   format.js      shared time/text/HTML formatting helpers
   pipeline.js    orchestrates explore → research → summarize
@@ -120,6 +138,8 @@ src/
 scripts/
   smoke.js           run the pipeline without WhatsApp/Chromium
   commands-smoke.js  test routing + plugins + store + dashboard offline
+  news-smoke.js      offline news tests (feed fixtures, dedup, digest build)
+  news-live.js       poll all sources for real + print the digest (--seed to init)
 ```
 
 ## Writing a plugin

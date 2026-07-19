@@ -51,6 +51,19 @@ export const config = {
     // How often to check for due reminders (min 5s).
     pollMs: Math.max(5000, Number(process.env.REMINDERS_POLL_MS || 30000)),
   },
+  news: {
+    // Morning AI digest: poll ~50 sources (src/newsSources.js), dedupe, and
+    // deliver a tiered summary into the self-chat once a day.
+    enabled: bool(process.env.NEWS_ENABLED, true),
+    // Local time (HH:MM in agent.timezone) after which the daily digest fires.
+    digestTime: process.env.NEWS_DIGEST_TIME || '08:00',
+    // Ignore feed items older than this many days (guards first-run floods).
+    maxAgeDays: Number(process.env.NEWS_MAX_AGE_DAYS || 7),
+    // Cap on digest length, spread across sources.
+    maxItems: Number(process.env.NEWS_MAX_ITEMS || 30),
+    // Let the LLM flag 3–5 top headlines at the top of the digest.
+    llmPicks: bool(process.env.NEWS_LLM_PICKS, true),
+  },
   web: {
     // Plain web dashboard for browsing saved items / reminders.
     enabled: bool(process.env.WEB_ENABLED, true),

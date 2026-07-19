@@ -10,6 +10,7 @@ import { log } from './logger.js';
 import { shouldProcess } from './pipeline.js';
 import * as store from './store.js';
 import { startReminderScheduler } from './reminders.js';
+import { startNewsScheduler } from './news.js';
 
 const AUTH_PATH = process.env.WWEBJS_AUTH_PATH || '.wwebjs_auth';
 
@@ -103,6 +104,7 @@ export function createClient(registry) {
     log.info('Send a link/note, or a command (save / ask / remind / list / help).');
 
     if (config.reminders.enabled) startReminderScheduler(client, () => selfChatId);
+    if (config.news.enabled) startNewsScheduler(client, () => selfChatId);
   });
 
   client.on('message_create', (msg) => {

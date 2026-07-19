@@ -1,5 +1,9 @@
 # Watch sources — catalog for the news/watch feature
 
+> **The live catalog is [`src/newsSources.js`](../src/newsSources.js)** — that's
+> what the digest actually polls. This document is the audit trail of what was
+> probed and what was found.
+
 Curated list of streams the agent can poll for new AI developments.
 Every "rss/atom" entry below was **probe-verified on 2026-07-19** (from this
 machine and cross-checked from the EC2 box, where the agent actually runs).
@@ -117,6 +121,44 @@ Every repo ships Atom feeds; no scraping needed. Pattern:
 Worth watching: `modelcontextprotocol/modelcontextprotocol`,
 `langchain-ai/langchain`, `getzep/graphiti`, `mem0ai/mem0`,
 `chaosync-org/awesome-ai-agent-testing` (a growing catalog — commits feed).
+
+## Second probe batch (2026-07-19) — 29 more verified feeds
+
+| Source | Access |
+|--------|--------|
+| Google Research | rss `https://research.google/blog/rss/` |
+| Apple ML Research | rss `https://machinelearning.apple.com/rss.xml` |
+| Amazon Science | rss `https://www.amazon.science/index.rss` |
+| NVIDIA AI (gen-AI category) | rss `https://blogs.nvidia.com/blog/category/generative-ai/feed/` |
+| NVIDIA Dev Blog | rss `https://developer.nvidia.com/blog/feed` (high volume, mixed) |
+| Sakana AI | rss `https://sakana.ai/feed` |
+| EleutherAI | rss `https://blog.eleuther.ai/index.xml` |
+| CrewAI | rss `https://blog.crewai.com/rss/` |
+| Qdrant | rss `https://qdrant.tech/blog/index.xml` |
+| Weaviate | atom `https://weaviate.io/blog/atom.xml` |
+| Haystack | rss `https://haystack.deepset.ai/blog/index.xml` |
+| Databricks | rss `https://www.databricks.com/blog/feed.xml` (mixed data/AI) |
+| Cloudflare AI tag | rss `https://blog.cloudflare.com/tag/ai/rss/` |
+| GitHub AI & ML | rss `https://github.blog/ai-and-ml/feed/` |
+| Vercel | rss `https://vercel.com/blog/rss` (mixed) |
+| Replit | rss `https://blog.replit.com/feed.xml` |
+| Karpathy | atom `https://karpathy.bearblog.dev/feed/` |
+| One Useful Thing (Mollick) | rss `https://www.oneusefulthing.org/feed` |
+| Zvi Mowshowitz | rss `https://thezvi.substack.com/feed` |
+| SemiAnalysis | rss `https://semianalysis.com/feed/` |
+| Dwarkesh Podcast | rss `https://www.dwarkesh.com/feed` |
+| ChinaTalk | rss `https://www.chinatalk.media/feed` |
+| The Gradient | rss `https://thegradient.pub/rss/` |
+| Last Week in AI | rss `https://lastweekin.ai/feed` |
+| AI Snake Oil | rss `https://www.aisnakeoil.com/feed` |
+| MIT News AI topic | rss `https://news.mit.edu/rss/topic/artificial-intelligence2` |
+| Alignment Forum | rss `https://www.alignmentforum.org/feed.xml` |
+| r/LocalLLaMA | atom `https://www.reddit.com/r/LocalLLaMA/.rss` (verified from EC2; r/MachineLearning got rate-limited) |
+| Anthropic Alignment | **scrape** `https://alignment.anthropic.com/` (no feed) |
+
+No feed / unreachable in batch 2: Cohere, IBM Research, Allen AI, Modal
+(unreachable to probes); AI21, Groq, Fireworks, Stability, Epoch AI, METR,
+Sourcegraph, Stanford HAI, W&B, OpenAI Research page (scrape-only).
 
 ## Excluded (for now) and why
 

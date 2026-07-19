@@ -11,7 +11,9 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "smoke": "node scripts/smoke.js",
-    "smoke:commands": "node scripts/commands-smoke.js"
+    "smoke:commands": "node scripts/commands-smoke.js",
+    "smoke:news": "node scripts/news-smoke.js",
+    "news:live": "node scripts/news-live.js"
   },
   "license": "MIT",
   "dependencies": {
