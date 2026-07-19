@@ -142,9 +142,31 @@ function selfChatDecision(msg, me) {
   return { ok: true, reason: 'research' };
 }
 
+/**
+ * Resolve the chat to reply into. `msg.getChat()` reaches into WhatsApp Web's
+ * internals and intermittently throws a minified error ("r: r") for @lid
+ * self-chats. The handlers only ever need `id._serialized` and `sendMessage`,
+ * so fall back to sending by id rather than dropping the message.
+ */
+async function resolveChat(client, msg) {
+  try {
+    const chat = await msg.getChat(); // reply into the same chat (handles @lid)
+    if (chat) return chat;
+  } catch (err) {
+    log.warn(`getChat() failed (${err?.message || 'unknown'}) — replying by id`);
+  }
+  const id = msg.from || selfChatId;
+  if (!id) return null;
+  return { id: { _serialized: id }, sendMessage: (body) => client.sendMessage(id, body) };
+}
+
 async function handleMessage(client, msg) {
   const preview = msg.body.replace(/\s+/g, ' ').slice(0, 80);
-  const chat = await msg.getChat(); // reply into the same chat (handles @lid)
+  const chat = await resolveChat(client, msg);
+  if (!chat) {
+    log.error(`No chat to reply into — dropped "${preview}"`);
+    return;
+  }
   rememberSelfChat(chat?.id?._serialized);
 
   const cmd = config.agent.commandsEnabled
