@@ -99,8 +99,12 @@ src/
   index.js       entry point + lifecycle (client + web server)
   config.js      env config + validation
   net.js         network hardening (IPv4 + connect-timeout/retries)
-  whatsapp.js    whatsapp-web.js client + self-chat listener + command router
-  commands.js    keyword parsing + natural-language reminder time parsing
+  whatsapp.js    whatsapp-web.js client + self-chat listener + plugin dispatch
+  commands.js    keyword splitting + natural-language reminder time parsing
+  plugins/       one file per feature — see "Writing a plugin" below
+    index.js       registry: loads the directory, routes keywords, generates help
+    research.js    the fallback: explore → research → summarize
+    save.js  remind.js  list.js  find.js  done.js  cancel.js  help.js
   store.js       JSON datastore (saved items, reminders, meta) on /data
   reminders.js   scheduler that delivers due reminders into the self-chat
   web.js         plain HTML dashboard (built-in http, no deps)
@@ -115,8 +119,51 @@ src/
   llm/           provider abstraction (openai.js, gemini.js, index.js)
 scripts/
   smoke.js           run the pipeline without WhatsApp/Chromium
-  commands-smoke.js  test commands + store + dashboard offline
+  commands-smoke.js  test routing + plugins + store + dashboard offline
 ```
+
+## Writing a plugin
+
+Every feature is a file in `src/plugins/` that default-exports a descriptor.
+Drop the file in and it's live — no core file needs editing.
+
+```js
+// src/plugins/echo.js
+export default {
+  name: 'echo',                       // unique id, also the PLUGINS_DISABLED key
+  keywords: ['echo', 'say'],          // first word of a message routes here
+  help: '🔁 `echo <text>` — repeat it back.',
+  order: 80,                          // position in the generated help
+  enabled: (config) => true,          // optional runtime gate
+  async run(ctx) {
+    await ctx.say(ctx.arg || 'nothing to echo');
+  },
+};
+```
+
+`ctx` is the whole surface a plugin gets:
+
+| field | what it is |
+|-------|-----------|
+| `ctx.arg` | the message minus the keyword |
+| `ctx.raw` | the full original message body |
+| `ctx.explicit` | `false` when routed here as the fallback |
+| `ctx.say(text)` | reply into the chat (agent marker added for you) |
+| `ctx.react(emoji)` | react to the triggering message |
+| `ctx.msg`, `ctx.chat` | the underlying whatsapp-web.js objects |
+| `ctx.registry` | the loaded plugins (used by `help`) |
+
+Rules worth knowing:
+
+- **Exactly one plugin sets `fallback: true`** — currently `research`. It handles
+  anything with no recognised keyword.
+- **`help` is generated** from each descriptor's `help` string, so it can't drift.
+- **Errors are contained**: a throwing plugin replies with the error and reacts
+  ❌ instead of taking the message handler down.
+- **Files starting with `_`** are helpers, not plugins, and are never loaded.
+- **Disable without a rebuild**: `PLUGINS_DISABLED=echo,watch` in `.env`.
+- **Plugins never import `whatsapp-web.js`**, which is what lets
+  `scripts/commands-smoke.js` run them offline with a fake `ctx`.
 
 ## Deployment
 

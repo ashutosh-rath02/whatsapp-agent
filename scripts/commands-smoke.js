@@ -8,26 +8,48 @@ import os from 'node:os';
 process.env.DB_PATH = path.join(os.tmpdir(), `wa-smoke-${Date.now()}.json`);
 process.env.AGENT_TZ = process.env.AGENT_TZ || 'Asia/Kolkata';
 
-const { parseCommand, parseReminder } = await import('../src/commands.js');
+const { parseReminder } = await import('../src/commands.js');
 const store = await import('../src/store.js');
 const { renderDashboard } = await import('../src/web.js');
+const { loadPlugins } = await import('../src/plugins/index.js');
 
 const ok = (c) => (c ? '✓' : '✗');
+let failures = 0;
+const expect = (cond, what) => {
+  if (!cond) {
+    failures++;
+    console.log(`  ✗ FAILED: ${what}`);
+  }
+};
 
-console.log('— parseCommand —');
-for (const s of [
-  'save https://github.com/foo/bar cool rust project',
-  'ask what is retrieval augmented generation',
-  'remind me in 2h: ping Sam',
-  'list',
-  'find rust',
-  'done #3',
-  'cancel R2',
-  'just a normal note with no command',
-  'help',
+const registry = await loadPlugins();
+
+console.log('— registry —');
+console.log('  loaded          :', registry.names().join(', '));
+expect(registry.size >= 8, 'all 8 plugins load');
+for (const p of registry.list()) {
+  expect(typeof p.run === 'function', `${p.name} has run()`);
+  expect(Boolean(p.help), `${p.name} has help text`);
+}
+console.log('  contract        :', ok(failures === 0));
+
+console.log('\n— routing —');
+for (const [s, want] of [
+  ['save https://github.com/foo/bar cool rust project', 'save'],
+  ['ask what is retrieval augmented generation', 'research'],
+  ['remind me in 2h: ping Sam', 'remind'],
+  ['list', 'list'],
+  ['find rust', 'find'],
+  ['done #3', 'done'],
+  ['cancel R2', 'cancel'],
+  ['just a normal note with no command', 'research'],
+  ['help', 'help'],
+  ['STORE: something shouty', 'save'], // case + trailing punctuation
 ]) {
-  const c = parseCommand(s);
-  console.log(`  ${s.slice(0, 42).padEnd(42)} → ${c.name.padEnd(9)} explicit=${c.explicit}`);
+  const hit = registry.resolve(s);
+  const got = hit.plugin?.name;
+  expect(got === want, `"${s.slice(0, 30)}" → ${want} (got ${got})`);
+  console.log(`  ${s.slice(0, 42).padEnd(42)} → ${String(got).padEnd(9)} explicit=${hit.explicit}`);
 }
 
 console.log('\n— parseReminder —');
@@ -63,8 +85,47 @@ console.log('  reminders       :', store.pendingReminders().map((r) => `R${r.id}
 console.log('  remove #' + a.item.id + '       :', ok(store.removeItem(a.item.id)), '→ now', store.listItems().map((i) => `#${i.id}`).join(' '));
 console.log('  cancel R' + rem.reminder.id + '       :', ok(store.cancelReminder(rem.reminder.id)), '→ now', store.pendingReminders().length, 'pending');
 
+// Drive real plugins through a fake ctx — no WhatsApp, no network.
+console.log('\n— plugin execution —');
+async function runPlugin(body) {
+  const hit = registry.resolve(body);
+  const sent = [];
+  const reacted = [];
+  await hit.plugin.run({
+    arg: hit.arg,
+    raw: body,
+    explicit: hit.explicit,
+    msg: { id: { _serialized: `smoke-${Math.random()}` } },
+    chat: { id: { _serialized: 'smoke@lid' } },
+    registry,
+    say: (b) => sent.push(b),
+    react: (e) => reacted.push(e),
+  });
+  return { sent: sent.join('\n'), reacted };
+}
+
+const saved = await runPlugin('save https://example.com/x a smoke-test note');
+expect(saved.sent.includes('Saved'), 'save replies with confirmation');
+expect(saved.reacted.includes('📌'), 'save reacts 📌');
+console.log('  save            :', ok(saved.sent.includes('Saved')), saved.sent.split('\n')[0]);
+
+const listed = await runPlugin('list');
+expect(listed.sent.includes('smoke-test note'), 'list shows the saved item');
+console.log('  list            :', ok(listed.sent.includes('smoke-test note')));
+
+const helped = await runPlugin('help');
+expect(helped.sent.includes('`save'), 'help is generated from plugin descriptors');
+expect(helped.sent.includes('`find'), 'help includes every plugin');
+console.log('  help (generated):', ok(helped.sent.includes('`find')), `${helped.sent.split('\n').length} lines`);
+
+const bad = await runPlugin('done'); // missing id — must not throw
+expect(bad.sent.includes('done <#id>'), 'done without an id explains itself');
+console.log('  done (no arg)   :', ok(bad.sent.includes('done <#id>')));
+
 const html = renderDashboard();
 console.log('\n— dashboard —');
 console.log('  rendered HTML   :', html.length, 'bytes', ok(html.includes('whatsapp-agent')));
 console.log('  data file       :', store.dbPath());
-console.log('\nAll good ✅');
+
+console.log(failures === 0 ? '\nAll good ✅' : `\n${failures} check(s) FAILED ❌`);
+process.exit(failures === 0 ? 0 : 1);

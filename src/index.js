@@ -3,6 +3,7 @@ import { log } from './logger.js';
 import { createClient } from './whatsapp.js';
 import { startWebServer } from './web.js';
 import { dbPath } from './store.js';
+import { loadPlugins } from './plugins/index.js';
 
 function banner() {
   log.info('whatsapp-agent — commands + research');
@@ -22,7 +23,10 @@ async function main() {
     process.exit(1);
   }
 
-  const client = createClient();
+  const registry = await loadPlugins();
+  log.info(`Plugins: ${registry.size} loaded (${registry.names().join(', ')})`);
+
+  const client = createClient(registry);
   const web = config.web.enabled ? startWebServer() : null;
 
   const shutdown = async (sig) => {

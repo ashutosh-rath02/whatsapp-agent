@@ -112,6 +112,7 @@ reel-audio transcription.
 | `TRANSCRIBE_MEDIA` | enable tweet/reel audio transcription |
 | `YTDLP_COOKIES_FILE` | Instagram auth for reel audio |
 | `COMMANDS_ENABLED` | keyword routing (save / ask / remind / list); default on |
+| `PLUGINS_DISABLED` | comma-separated plugin names to switch off (e.g. `find,cancel`) |
 | `AGENT_TZ` | timezone for showing reminder/saved times (box is UTC) |
 | `WEB_ENABLED`, `WEB_PORT` | dashboard on/off and port (default 8080) |
 | `WEB_USER`, `WEB_PASSWORD` | dashboard auth; no password ⇒ localhost-only |

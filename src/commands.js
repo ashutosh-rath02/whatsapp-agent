@@ -1,30 +1,19 @@
-// Parse the leading keyword of a self-chat message into an intent.
-// Explicit keywords only (the user opted for deterministic, zero-cost routing):
-// anything without a recognised keyword falls through to research (the default).
+// Split the leading keyword off a self-chat message. Explicit keywords only
+// (the user opted for deterministic, zero-cost routing) — which keyword maps to
+// which feature is owned by the plugin registry, not this file.
 import * as chrono from 'chrono-node';
 
-const ALIASES = {
-  save: 'save', store: 'save', keep: 'save',
-  ask: 'research', research: 'research', explore: 'research',
-  remind: 'remind', reminder: 'remind', remindme: 'remind',
-  list: 'list', recent: 'list', ls: 'list', all: 'list',
-  find: 'find', search: 'find',
-  done: 'done', delete: 'done', del: 'done', rm: 'done', clear: 'done',
-  cancel: 'cancel',
-  help: 'help', commands: 'help', menu: 'help',
-};
-
 /**
- * @returns {{ name: string, arg: string, explicit: boolean, keyword?: string }}
- *   name is one of the canonical intents; for non-commands name='research'.
+ * @returns {{ key: string, rest: string, text: string }}
+ *   key  — normalised first word, to look up in the registry
+ *   rest — everything after it (the plugin's argument)
+ *   text — the whole trimmed body, used when nothing matches
  */
-export function parseCommand(body = '') {
+export function splitCommand(body = '') {
   const text = body.trim();
   const firstTok = text.split(/\s+/, 1)[0] || '';
   const key = firstTok.toLowerCase().replace(/[:：,.!]+$/, '');
-  const name = ALIASES[key];
-  if (!name) return { name: 'research', arg: text, explicit: false };
-  return { name, arg: text.slice(firstTok.length).trim(), explicit: true, keyword: key };
+  return { key, rest: text.slice(firstTok.length).trim(), text };
 }
 
 // Expand casual durations chrono doesn't natively read ("2h", "30m", "tmrw").
