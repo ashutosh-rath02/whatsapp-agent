@@ -128,33 +128,126 @@ message you the moment a match appears**, reusing the reminder scheduler's
 20–30 min) rather than the news digest's once-a-day trigger. Open question
 below — you may want a digest instead, or both.
 
-## Open decisions (need your call before I build)
+## Decisions made (2026-07-20)
 
-1. **Delivery cadence** — ping the instant a match is found, vs. a batched
-   digest (e.g. every few hours, or once daily like the news feature)?
-2. **Day-1 scope** — start with just the ~28 companies confirmed on a real
-   API today (fast, cheap, reliable), or invest first in resolving more of
-   the 497 placeholder rows so day-1 coverage is bigger? I'd lean toward
-   "ship the ~28 now, expand weekly" so you start getting real signal
-   immediately rather than waiting on a big resolution pass.
-3. **Seniority band** — the original sheet was scoped to *your* 1 YOE. Keep
-   that filter (skip senior/staff/lead reqs), or widen it since this
-   message listed roles without a YOE qualifier?
-4. **Custom-page companies** — the 121 companies with no API (includes some
-   big names) only get scraping, which is more fragile and more
-   maintenance per company than the ATS tiers. Worth hand-picking a small
-   priority subset (a dozen or so) for scraping, or skip custom entirely
-   and rely on the ATS-backed companies plus later resolution of the 497?
+1. **Cadence: real-time.** Poll continuously (target ~20–30 min interval)
+   and message the instant a match is found — not a batched digest. Jobs
+   are time-sensitive in a way news isn't.
+2. **Day-1 scope: resolve more first.** Rather than shipping the ~28
+   hand-verified companies and expanding weekly, did a bulk resolution
+   pass across the whole catalog before building anything — see below.
+3. **Seniority: capture broadly, tag fit — don't filter.** Keep the
+   original sheet's "Fit for Your 1 YOE" spirit (annotate Good
+   fit/Stretch), but don't drop a company or posting just because it
+   isn't junior-friendly. Every role-relevant IC posting gets surfaced;
+   the fit label helps you triage, it doesn't gate delivery.
+4. **Custom pages: use open-source ATS coverage instead of hand-rolled
+   scrapers first.** See below — this changed the plan materially.
 
-## Rollout plan (once decisions above are made)
+## Open-source discovery: `jobhive` (kalil0321/ats-scrapers)
 
-- **Phase 1** — build the 4 ATS adapters + `jobs.js` engine + `jobs`
-  plugin, wired to the ~28 already-verified companies. Offline smoke test
-  (fixture-based, like `news-smoke.js`) + a live test against the real
-  APIs before touching WhatsApp, then deploy.
-- **Phase 2** — resolve a batch of the 497 placeholder rows to real URLs
-  (prioritize the "AI-native Startup" and "Fintech" categories — most
-  likely to be on Ashby/Greenhouse/Lever like the 33 verified today) and
-  fold them in via `data/companies.csv`, no code changes needed.
-- **Phase 3 (stretch)** — scraping for a hand-picked custom-page priority
-  list, same pattern as the news digest's Anthropic/HF-Papers scrapers.
+Before writing scrapers for the 121+ "custom" companies, checked whether
+prior art exists. It does: **[jobhive](https://github.com/kalil0321/ats-scrapers)**
+is an MIT-licensed, actively maintained (386 commits, CI on Py 3.11–3.13)
+project with reverse-engineered scrapers for **47 ATS platforms** —
+including several we'd bucketed as "custom" because they don't advertise
+an obvious API: SmartRecruiters, Workable, iCIMS, BambooHR, Oracle HCM,
+SuccessFactors, Phenom, Avature, and more.
+
+It's a Python library (`jobhive-py`), so not a direct dependency for this
+Node project — but its scrapers document exactly which endpoint each ATS
+exposes, which meant I could **port the same endpoints into our
+dependency-free `fetch`-based style** without reverse-engineering them
+from scratch. Verified live today (not just read from source):
+
+| ATS | endpoint | verified against |
+|-----|----------|----|
+| Greenhouse | `GET boards-api.greenhouse.io/v1/boards/{slug}/jobs` | anthropic, deepmind, stripe |
+| Lever | `GET api.lever.co/v0/postings/{slug}?mode=json` | palantir |
+| Ashby | `GET api.ashbyhq.com/posting-api/job-board/{slug}` | ramp, openai |
+| SmartRecruiters | `GET api.smartrecruiters.com/v1/companies/{slug}/postings` | visa |
+| Workable | `GET apply.workable.com/api/v1/widget/accounts/{slug}` | monzo |
+| Oracle HCM | `GET {tenant}.fa.ocs.oraclecloud.com/hcmRestApi/.../recruitingCEJobRequisitions` | Dell (349 live jobs, incl. "Advisory AI Architect (FDE Unit)") |
+| Workday | `POST {tenant}.wd#.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs` | NVIDIA (server-side `searchText` works) |
+
+That's **7 confirmed-live adapters**, not 4 — SmartRecruiters, Workable,
+and Oracle HCM joined the toolkit today. (SuccessFactors, Phenom, iCIMS
+patterns are documented in jobhive too but not yet live-verified by us —
+next-session work if a company needs them.)
+
+## Bulk resolution pass — results
+
+With 7 working adapters instead of 4, re-ran resolution across **all 618
+previously-unresolved companies** (497 placeholder rows + 121 custom
+pages), by guessing slugs (concatenated / hyphenated company name) against
+Greenhouse, Lever, Ashby, SmartRecruiters, and Workable, and confirming
+each hit for real (not just a 200 status).
+
+**This caught two real false-positive bugs before they shipped**, worth
+recording since they'll bite anyone doing this kind of slug-guessing:
+
+- **Truncating a multi-word name to its first word is unsafe.**
+  `"Applied Materials"` → slug `applied` hit a real Ashby board — for an
+  unrelated self-driving startup ("Motion Planning (Fallback Stack)"),
+  not the semiconductor giant. Fixed: slugs are always built from *all*
+  words in the name; a bare single-word slug is only tried when the
+  company's real name is genuinely one word.
+- **BambooHR is fundamentally unsafe to auto-guess.** `"Seagate
+  Technology"` → stopword-stripped to `seagate` → `seagate.bamboohr.com`
+  returned a real, live jobs board — for a Coquitlam, BC construction
+  company hiring a "Traveling Carpenter." BambooHR skews small/mid-size
+  business and exposes no company-name field to cross-check against, so a
+  same-word small business is genuinely likely to hold a slug a big name
+  would want. **Dropped BambooHR from automated resolution entirely.**
+
+After both fixes, hand-verified every `confidence: low` hit (single-word
+company name, on an ATS with no name field to cross-check — Ashby/Lever)
+by inspecting actual returned job titles against the company's known
+domain. This caught two more real false positives that had already been
+merged, and confirmed the rest:
+
+| checked | verdict | evidence |
+|---|---|---|
+| Docker, Confluent, Gainsight, MetLife, CRED, Paytm, Zeta, Meesho, Sophos, Bureau, Upflow, Dozee, OpenAI, CodeRabbit, Ema, Composio | ✅ correct | titles/locations match the real company (e.g. Confluent → "Apache Kafka" roles; Paytm → Noida jobs; CRED → "Kuvera" a real CRED subsidiary) |
+| **Porter** (master list, `lever/porter`) | ❌ wrong — reverted | actual postings: "Travel Nurse Practitioner," Massachusetts/Michigan — a US healthcare staffing company, not the Bangalore logistics company |
+| **BarRaiser** (startups, `lever/barraiser`) | ❌ wrong — excluded | actual postings: "Bomb Cleaner," "Chief Executive Manager" — unrelated to the interview-as-a-service platform |
+| **Craze** (startups, `ashby/craze`) | ❌ wrong — excluded | single unrelated "Video Editor @ Los Angeles" posting, no corroborating signal |
+
+Net: **16 of 19 hand-checked `low`-confidence hits were correct (84%)**.
+Good enough to keep the tier, bad enough that nothing tagged `low` should
+be trusted without a glance — it's in the data specifically so that
+glance is possible.
+
+### Coverage: before → after
+
+| | before | after |
+|---|---|---|
+| master list (683) — companies with a working ATS adapter | 60 | **122** |
+| master list — `needs-resolution` (no link at all) | 497 | 452 |
+| master list — `custom` (page confirmed, no known ATS) | 126 | 109 |
+| funded startups (209) — companies with a working ATS adapter | 0 | **11** |
+
+Pollable coverage roughly **doubled** on the master list (60 → 122 of 683)
+from one afternoon of slug-guessing against 5 ATS types, and the 209
+funded startups went from **zero** career links to 11 pollable — no
+per-company manual research needed. `data/companies.csv` and
+`data/funded-startups.csv` now carry `ats`, `career_url`, and `confidence`
+columns.
+
+## Rollout plan
+
+- **Phase 1** — build 7 ATS adapters (not 4) + `jobs.js` engine + `jobs`
+  plugin, wired to the now ~123+ resolved companies. Real-time delivery
+  per the cadence decision: poll loop every 20–30 min, message on new
+  match. Fit-tagging (Good fit / Stretch) reusing the keyword+LLM
+  relevance pattern from the news digest. Offline smoke test + a live
+  test against the real APIs before touching WhatsApp, then deploy.
+- **Phase 2** — the 451 still-`needs-resolution` and 109 `custom` rows
+  didn't hit a guessable slug; picking those up needs either a targeted
+  web search per company or accepting they stay uncovered. Not blocking
+  Phase 1 — the resolved set already covers most of the AI-native/FDE
+  segment you actually care about.
+- **Phase 3 (stretch)** — hand-picked scraping for the highest-priority
+  handful of true-custom companies (OpenAI-adjacent labs that turn out to
+  have no ATS at all, or specific must-watch big names), same pattern as
+  the news digest's Anthropic scraper.
