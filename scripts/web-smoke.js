@@ -93,6 +93,16 @@ const jobsYesterday = renderJobsPage({ day: yKey });
 expect(jobsYesterday.includes('Beta Inc'), 'navigating to ?day=<yesterday> shows that posting');
 expect(jobsYesterday.includes('tag stretch'), 'Stretch renders with the stretch class');
 
+console.log('\n— jobs page: render cap on a heavy day —');
+store.addJobs(Array.from({ length: 250 }, (_, i) => ({
+  key: `cap${i}`, company: `CapCo${i}`, title: 'Software Engineer', url: `https://example.com/cap${i}`, location: '', fit: 'Good fit',
+})));
+store.markJobsDelivered(Array.from({ length: 250 }, (_, i) => `cap${i}`));
+const jobsCapped = renderJobsPage({});
+expect(jobsCapped.includes('<strong>251</strong> postings'), 'stat-row shows the true uncapped total (1 existing + 250 new = 251)');
+expect((jobsCapped.match(/CapCo\d+/g) || []).length <= 200, 'rendered card count stays within the cap');
+expect(jobsCapped.includes('more from this day'), 'overflow notice shown when a day exceeds the cap');
+
 console.log('\n— dashboard still renders with all data present —');
 const dash = renderDashboard();
 expect(dash.includes('whatsapp-agent'), 'dashboard renders');

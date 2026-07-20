@@ -87,16 +87,24 @@ export function renderNewsPage(query) {
   }
 
   const { current, newer, older } = resolveDay(days, query.day);
-  const items = byDay.get(current) || [];
+  const dayItems = byDay.get(current) || [];
 
+  // Safety cap per tier, same philosophy as the jobs page and the WhatsApp
+  // message itself — a heavy news day shouldn't make the page unbounded.
+  const RENDER_CAP_PER_TIER = 60;
   const byTier = {};
-  for (const n of items) (byTier[n.tier] ||= []).push(n);
+  let overflow = 0;
+  for (const n of dayItems) {
+    const bucket = (byTier[n.tier] ||= []);
+    if (bucket.length < RENDER_CAP_PER_TIER) bucket.push(n);
+    else overflow++;
+  }
   const sections = Object.entries(TIERS)
     .filter(([tier]) => byTier[tier]?.length)
     .map(([tier, label]) => `<h3 class="section">${label}</h3>${byTier[tier].map(newsItemRow).join('')}`)
     .join('');
 
-  const sourceCount = new Set(items.map((n) => n.source)).size;
+  const sourceCount = new Set(dayItems.map((n) => n.source)).size;
   const body = `
 <header>
   <h1><a href="/">🗒️ whatsapp-agent</a></h1>
@@ -105,8 +113,9 @@ export function renderNewsPage(query) {
 </header>
 
 ${dayNav('/news', tz, { current, newer, older })}
-<div class="stat-row"><span><strong>${items.length}</strong> items</span><span><strong>${sourceCount}</strong> sources</span></div>
+<div class="stat-row"><span><strong>${dayItems.length}</strong> items</span><span><strong>${sourceCount}</strong> sources</span></div>
 ${sections}
+${overflow > 0 ? `<div class="empty">+${overflow} more from this day, capped per section at ${RENDER_CAP_PER_TIER}.</div>` : ''}
 ${archiveStrip('/news', days, current)}
 
 <footer>Send <code>news</code> in WhatsApp for an on-demand digest, or <code>news sources</code> to see everything watched.</footer>`;
@@ -138,9 +147,16 @@ export function renderJobsPage(query) {
   }
 
   const { current, newer, older } = resolveDay(days, query.day);
-  const items = (byDay.get(current) || []).slice().sort((a, b) => a.company.localeCompare(b.company));
-  const companyCount = new Set(items.map((j) => j.company)).size;
-  const goodFit = items.filter((j) => j.fit === 'Good fit').length;
+  const dayItems = (byDay.get(current) || []).slice().sort((a, b) => a.company.localeCompare(b.company));
+  const companyCount = new Set(dayItems.map((j) => j.company)).size;
+  const goodFit = dayItems.filter((j) => j.fit === 'Good fit').length;
+
+  // A day can hold hundreds of postings (a re-seed, or a big multi-city
+  // posting spree from one company) — cap what actually renders so the
+  // page stays a normal size, same philosophy as the WhatsApp message cap.
+  const RENDER_CAP = 200;
+  const items = dayItems.slice(0, RENDER_CAP);
+  const overflow = dayItems.length - items.length;
 
   const body = `
 <header>
@@ -150,8 +166,9 @@ export function renderJobsPage(query) {
 </header>
 
 ${dayNav('/jobs', tz, { current, newer, older })}
-<div class="stat-row"><span><strong>${items.length}</strong> postings</span><span><strong>${companyCount}</strong> companies</span><span><strong>${goodFit}</strong> good fit</span></div>
+<div class="stat-row"><span><strong>${dayItems.length}</strong> postings</span><span><strong>${companyCount}</strong> companies</span><span><strong>${goodFit}</strong> good fit</span></div>
 ${items.map(jobItemRow).join('')}
+${overflow > 0 ? `<div class="empty">+${overflow} more from this day — narrowed to the first ${RENDER_CAP}, alphabetical by company.</div>` : ''}
 ${archiveStrip('/jobs', days, current)}
 
 <footer>Send <code>jobs</code> in WhatsApp to poll now, or <code>jobs sources</code> to see every company watched.</footer>`;
