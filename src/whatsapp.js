@@ -128,8 +128,9 @@ export function createClient(registry) {
 
   client.on('message_create', (msg) => {
     // Checked before the self-chat gate: "here" is valid from a group too,
-    // which selfChatDecision would otherwise reject outright.
-    if (msg.fromMe && me.size > 0 && msg.body?.trim().toLowerCase() === 'here') {
+    // which selfChatDecision would otherwise reject outright. "here confirm"
+    // is the same command with an explicit override — see handleHereCommand.
+    if (msg.fromMe && me.size > 0 && /^here(\s+confirm)?$/i.test((msg.body || '').trim())) {
       chain = chain.then(() => handleHereCommand(client, msg, me)).catch((e) => log.error(e));
       return;
     }
@@ -189,10 +190,13 @@ async function resolveChat(client, msg) {
 }
 
 /**
- * msg.getChat() is really just client.getChatById() underneath, and that
- * call intermittently throws a minified internal error (the same "r: r" bug
- * already worked around for self-chat replies) — for groups too, not just
- * @lid self-chats. It's transient, so retry a few times before giving up.
+ * msg.getChat() is really just client.getChatById() underneath. For groups,
+ * this hits a confirmed upstream whatsapp-web.js bug (issue #5752): WhatsApp
+ * renamed an internal module, so the library's group-metadata refresh throws
+ * every time, for every group — not a timing issue, so retrying here won't
+ * fix that specific case (see the isConfirm fallback in handleHereCommand
+ * for what actually handles it). Still worth a few attempts for whatever
+ * genuinely-transient failures do exist (the network, WA's own hiccups).
  */
 async function getChatWithRetry(msg, attempts = 4, delayMs = 400) {
   let lastErr;
@@ -213,10 +217,21 @@ async function getChatWithRetry(msg, attempts = 4, delayMs = 400) {
  * be visible to every member, so a group with anyone besides you is refused
  * rather than silently trusting it. In self-chat (or any non-group chat),
  * resets back to self-chat.
+ *
+ * "here confirm" is a manual override for a real, currently-unresolved
+ * whatsapp-web.js bug (upstream issue #5752: WhatsApp renamed an internal
+ * module, so getChatModel's group-metadata refresh throws for every group,
+ * every time — confirmed via this project's own EC2 logs, and confirmed as
+ * deterministic, not transient, so retrying alone can never fix it). When
+ * the automated participant check can't run at all, "confirm" lets you
+ * vouch for the group yourself instead of being permanently stuck. It does
+ * NOT bypass the check when the check successfully runs and finds someone
+ * else present — only the case where WhatsApp Web won't tell us either way.
  */
 export async function handleHereCommand(client, msg, me) {
   const to = msg.to || '';
   const isGroup = to.endsWith('@g.us');
+  const isConfirm = /confirm/i.test(msg.body || '');
 
   if (!isGroup) {
     rememberNotifyGroup(null);
@@ -233,10 +248,17 @@ export async function handleHereCommand(client, msg, me) {
     chat = await getChatWithRetry(msg);
   } catch (e) {
     log.warn(`here: couldn't load group chat after retries — ${e?.message}`);
+    if (isConfirm) {
+      rememberNotifyGroup(to);
+      await client
+        .sendMessage(to, `${config.agent.replyMarker}\n\n✅ Registered — couldn't verify this group's members automatically (a known WhatsApp Web bug), so I'm trusting you that it's just you here. Reminders, job matches, and the news digest will come here from now on.`)
+        .catch(() => {});
+      return;
+    }
     // Never fail this silently — before this, a getChat() failure here
     // looked to the user exactly like "here" had done nothing at all.
     await client
-      .sendMessage(to, `${config.agent.replyMarker}\n\n⚠️ Couldn't check this group just now (a known WhatsApp Web glitch) — send \`here\` again in a few seconds.`)
+      .sendMessage(to, `${config.agent.replyMarker}\n\n⚠️ Couldn't check who else is in this group — a WhatsApp Web bug, not something retrying fixes. If you're SURE it's just you here, send \`here confirm\` to register it without the automated check.`)
       .catch(() => {});
     return;
   }

@@ -64,6 +64,16 @@ if anyone else is in it, it refuses and tells you why, since everything
 sent there (reminders, job search activity, the news digest) would
 otherwise be visible to them too.
 
+**If `here` replies "couldn't check this group"**: this is a confirmed,
+currently-unresolved bug in the `whatsapp-web.js` library itself, not
+this project — [upstream issue #5752](https://github.com/pedroslopez/whatsapp-web.js/issues/5752).
+WhatsApp renamed an internal module; the library's group-metadata lookup
+throws for every group, every time, on the latest available release —
+it's deterministic, not a timing issue, so retrying alone won't help
+(the agent already retries automatically before giving up). Once you're
+sure it's just you in the group, send **`here confirm`** to register it
+without the automated check.
+
 ## Morning AI digest
 
 Every morning (default **08:00** in `AGENT_TZ`) the agent polls ~55 sources —

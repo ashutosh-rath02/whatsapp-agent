@@ -23,8 +23,8 @@ const me = new Set([ME_CUS, ME_LID]);
 const clientSent = [];
 const fakeClient = { sendMessage: async (to, body) => { clientSent.push({ to, body }); } };
 
-function fakeMsg({ to, getChat }) {
-  return { to, getChat };
+function fakeMsg({ to, getChat, body = 'here' }) {
+  return { to, getChat, body };
 }
 
 console.log('— self-chat "here" (no group registered yet) —');
@@ -86,9 +86,42 @@ console.log('\n— group "here": getChat() keeps failing (retries, then always n
   expect(Date.now() - t0 >= 400, 'backed off between retries rather than hammering immediately');
   expect(store.getMeta('notify_group_id') === before, 'failure to load the chat leaves target unchanged (fail closed)');
   expect(
-    clientSent.length === 1 && clientSent[0].to === 'broken-group@g.us' && clientSent[0].body.includes("Couldn't check this group"),
+    clientSent.length === 1 && clientSent[0].to === 'broken-group@g.us' && clientSent[0].body.includes("Couldn't check who else"),
     'user is told it failed — never silent, unlike before this fix',
   );
+  expect(clientSent[0].body.includes('here confirm'), 'failure message points at the confirm override');
+}
+
+console.log('\n— group "here confirm": getChat() keeps failing -> registers on trust —');
+{
+  clientSent.length = 0;
+  const msg = fakeMsg({
+    to: 'broken-group@g.us',
+    body: 'here confirm',
+    getChat: async () => { throw new Error('boom'); },
+  });
+  await handleHereCommand(fakeClient, msg, me);
+  expect(store.getMeta('notify_group_id') === 'broken-group@g.us', '"here confirm" registers despite the unverifiable group');
+  expect(
+    clientSent.length === 1 && clientSent[0].body.includes('Registered') && clientSent[0].body.includes("couldn't verify"),
+    'confirmation message is explicit that verification was skipped, not silently claiming a real check passed',
+  );
+}
+
+console.log('\n— group "here confirm": getChat() succeeds and finds someone else -> STILL refused —');
+{
+  const before = store.getMeta('notify_group_id');
+  clientSent.length = 0;
+  const sent = [];
+  const chat = {
+    id: { _serialized: 'risky-group-2@g.us' },
+    participants: [{ id: { _serialized: ME_CUS } }, { id: { _serialized: '111222333@c.us' } }],
+    sendMessage: async (body) => sent.push(body),
+  };
+  const msg = fakeMsg({ to: 'risky-group-2@g.us', body: 'here confirm', getChat: async () => chat });
+  await handleHereCommand(fakeClient, msg, me);
+  expect(store.getMeta('notify_group_id') === before, '"confirm" does not bypass a check that actually ran and found someone else');
+  expect(sent.length === 1 && sent[0].includes("won't switch"), 'still refused with the normal explanation');
 }
 
 console.log('\n— group "here": getChat() fails once, then succeeds (retry recovers) —');
