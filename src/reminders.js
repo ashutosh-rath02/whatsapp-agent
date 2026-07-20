@@ -7,10 +7,10 @@ import { dueReminders, markReminderFired, reload } from './store.js';
 
 /**
  * @param {import('whatsapp-web.js').Client} client
- * @param {() => (string|null)} getSelfChatId  resolves the chat id to send to
+ * @param {() => (string|null)} getNotifyTarget  resolves the chat id to send to
  * @returns {() => void} stop function
  */
-export function startReminderScheduler(client, getSelfChatId) {
+export function startReminderScheduler(client, getNotifyTarget) {
   const pollMs = config.reminders.pollMs;
   let stopped = false;
   let timer = null;
@@ -21,7 +21,7 @@ export function startReminderScheduler(client, getSelfChatId) {
       reload(); // pick up any writes made by another process since our last tick
       const due = dueReminders();
       if (due.length) {
-        const chatId = getSelfChatId();
+        const chatId = getNotifyTarget();
         if (!chatId) {
           log.warn(`${due.length} reminder(s) due but self-chat id unknown yet — will retry`);
         } else {

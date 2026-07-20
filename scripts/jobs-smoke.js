@@ -8,7 +8,7 @@ import os from 'node:os';
 process.env.DB_PATH = path.join(os.tmpdir(), `wa-jobs-smoke-${Date.now()}.json`);
 process.env.JOBS_MAX_PER_MESSAGE = '3'; // small, to exercise the cap deterministically
 
-const { isRelevant, fitFor } = await import('../src/jobRelevance.js');
+const { isRelevant, fitFor, isIndiaLocation } = await import('../src/jobRelevance.js');
 const { loadCompanies } = await import('../src/jobSources.js');
 const { supported } = await import('../src/ats/index.js');
 const store = await import('../src/store.js');
@@ -61,6 +61,34 @@ expect(fitFor('Staff Backend Engineer') === 'Stretch', 'Staff -> Stretch');
 expect(fitFor('Software Engineer') === 'Good fit', 'no seniority word -> Good fit');
 expect(fitFor('Junior Software Engineer') === 'Good fit', 'Junior -> Good fit');
 expect(isRelevant('Senior Software Engineer'), 'Stretch-tagged roles are still relevant (not filtered)');
+
+console.log('\n— India-only location filter —');
+for (const loc of [
+  'Bengaluru',
+  'Bangalore, IND',
+  'Bengaluru, KA, India',
+  'Gurugram, , India',
+  'Hyderabad, Telangana, India',
+  'Remote - India',
+  'US, India, UK', // India present in a multi-country posting
+  'Pune',
+  'New Delhi',
+  'Mumbai, Maharashtra',
+]) {
+  expect(isIndiaLocation(loc), `"${loc}" -> India`);
+}
+for (const loc of [
+  'Cork, Co. Cork, Ireland',
+  'Seoul, South Korea',
+  'Remote - United Kingdom',
+  'US-CA-Menlo Park',
+  'Petah Tikva, , Israel',
+  'Remote', // ambiguous, no country -> excluded per "not outside"
+  'Indiana, US', // must not false-positive on "Ind" substring
+  '',
+]) {
+  expect(!isIndiaLocation(loc), `"${loc}" -> not India`);
+}
 
 console.log('\n— catalog —');
 const companies = loadCompanies();

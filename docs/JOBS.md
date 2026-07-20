@@ -143,6 +143,13 @@ below — you may want a digest instead, or both.
    the fit label helps you triage, it doesn't gate delivery.
 4. **Custom pages: use open-source ATS coverage instead of hand-rolled
    scrapers first.** See below — this changed the plan materially.
+5. **Location: India only** (added 2026-07-20, after the first live run
+   surfaced postings in Seoul, Dublin, Tel Aviv, etc. — global companies'
+   boards post everywhere). `jobRelevance.js`'s `isIndiaLocation()` matches
+   the country name/code and every major India tech hub city; an
+   unqualified "Remote" with no country is excluded, not assumed India —
+   unconfirmed doesn't get the benefit of the doubt. Cut the live match
+   count from 1342 (all locations) to 191 (India only) on the same catalog.
 
 ## Open-source discovery: `jobhive` (kalil0321/ats-scrapers)
 

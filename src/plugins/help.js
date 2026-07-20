@@ -10,6 +10,9 @@ export default {
     for (const p of ctx.registry.list()) {
       if (p.help) lines.push(p.help);
     }
+    lines.push(
+      '📍 `here` — sent in a WhatsApp group with just you in it, redirects reminders/jobs/news there instead of self-chat (self-chats don\'t always notify). Send `here` again in self-chat to switch back.',
+    );
     await ctx.say(lines.join('\n'));
   },
 };

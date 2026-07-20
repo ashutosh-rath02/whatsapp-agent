@@ -26,6 +26,23 @@ function rememberSelfChat(id) {
   }
 }
 
+// WhatsApp doesn't push a phone notification for messages you send yourself
+// from a linked device — self-chat and the bot's own session are the same
+// account, so a self-chat message looks "sent by you" rather than "received".
+// Group messages don't have that problem. `here`, sent in a private group,
+// redirects unsolicited sends (reminders/jobs/news) there instead; `here`
+// sent back in self-chat reverts. Persisted like selfChatId.
+let notifyGroupId = store.getMeta('notify_group_id');
+function rememberNotifyGroup(id) {
+  if (id !== notifyGroupId) {
+    notifyGroupId = id;
+    store.setMeta('notify_group_id', id);
+  }
+}
+function getNotifyTarget() {
+  return notifyGroupId || selfChatId;
+}
+
 /**
  * Remove a stale Chromium singleton lock left behind by a hard crash / kill.
  * Safe because this app runs single-instance; without it, a restart fails with
@@ -104,12 +121,19 @@ export function createClient(registry) {
     log.info(`Ready ✅  Listening to your self-chat (pn=${cus} lid=${lid || 'n/a'}).`);
     log.info('Send a link/note, or a command (save / ask / remind / list / help).');
 
-    if (config.reminders.enabled) startReminderScheduler(client, () => selfChatId);
-    if (config.news.enabled) startNewsScheduler(client, () => selfChatId);
-    if (config.jobs.enabled) startJobsScheduler(client, () => selfChatId);
+    if (config.reminders.enabled) startReminderScheduler(client, getNotifyTarget);
+    if (config.news.enabled) startNewsScheduler(client, getNotifyTarget);
+    if (config.jobs.enabled) startJobsScheduler(client, getNotifyTarget);
   });
 
   client.on('message_create', (msg) => {
+    // Checked before the self-chat gate: "here" is valid from a group too,
+    // which selfChatDecision would otherwise reject outright.
+    if (msg.fromMe && me.size > 0 && msg.body?.trim().toLowerCase() === 'here') {
+      chain = chain.then(() => handleHereCommand(client, msg, me)).catch((e) => log.error(e));
+      return;
+    }
+
     const decision = selfChatDecision(msg, me, registry);
     if (msg.fromMe) {
       log.debug('↧ fromMe', { from: msg.from, to: msg.to, type: msg.type, decision: decision.reason });
@@ -162,6 +186,48 @@ async function resolveChat(client, msg) {
   const id = msg.from || selfChatId;
   if (!id) return null;
   return { id: { _serialized: id }, sendMessage: (body) => client.sendMessage(id, body) };
+}
+
+/**
+ * "here": redirect unsolicited sends (reminders/jobs/news) to wherever this
+ * was sent. In a group, only if it's private — everything sent there would
+ * be visible to every member, so a group with anyone besides you is refused
+ * rather than silently trusting it. In self-chat (or any non-group chat),
+ * resets back to self-chat.
+ */
+export async function handleHereCommand(client, msg, me) {
+  const to = msg.to || '';
+  const isGroup = to.endsWith('@g.us');
+
+  if (!isGroup) {
+    rememberNotifyGroup(null);
+    const chat = await resolveChat(client, msg);
+    if (chat) await say(chat, '↩️ Back to sending reminders, job matches, and the news digest to your self-chat.');
+    return;
+  }
+
+  let chat;
+  try {
+    chat = await msg.getChat(); // need the real GroupChat here — resolveChat's fallback has no .participants
+  } catch (e) {
+    log.warn(`here: couldn't load group chat — ${e?.message} — try again`);
+    return;
+  }
+  const others = (chat.participants || []).filter((p) => {
+    const id = p?.id?._serialized;
+    return id && !me.has(id);
+  });
+  if (others.length > 0) {
+    await say(
+      chat,
+      `⚠️ This group has ${others.length} other member${others.length === 1 ? '' : 's'} — everything I'd send here ` +
+        `(reminders, job matches, the news digest) would be visible to them too, so I won't switch. ` +
+        `Use a group with just you in it (add someone to create it, then remove them), and send \`here\` again.`,
+    );
+    return;
+  }
+  rememberNotifyGroup(to);
+  await say(chat, '✅ Reminders, job matches, and the news digest will come here from now on.');
 }
 
 async function handleMessage(client, msg, registry) {

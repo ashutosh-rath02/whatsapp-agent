@@ -13,8 +13,23 @@ const EXCLUDE_RE =
 const SENIOR_RE = /\b(senior|sr\.?|staff|principal|lead|director|vp|vice\s+president|head\s+of|distinguished)\b/i;
 const JUNIOR_RE = /\b(junior|jr\.?|associate|entry[\s-]?level|new\s+grad|graduate|intern|trainee)\b/i;
 
+// India-only, per explicit ask. Matches the country name/code and every
+// major India tech-hub city these ATS boards actually report locations as
+// (verified against real postings during testing: "Bangalore, IND",
+// "Bengaluru, KA, India", "Gurugram, , India", etc.). A location with no
+// recognizable India signal is excluded rather than guessed at — an empty
+// or ambiguous "Remote" with no country can't be confirmed India-eligible,
+// and the ask was "not outside," so unconfirmed doesn't get the benefit
+// of the doubt.
+const INDIA_RE =
+  /\bindia\b|\bind\b|\bbengaluru\b|\bbangalore\b|\bhyderabad\b|\bpune\b|\bgurugram\b|\bgurgaon\b|\bnoida\b|\bnew\s+delhi\b|\bdelhi\b|\bncr\b|\bmumbai\b|\bchennai\b|\bkolkata\b|\bahmedabad\b|\bjaipur\b|\bkochi\b|\bcochin\b|\bcoimbatore\b|\bindore\b|\bchandigarh\b|\bmohali\b|\btrivandrum\b|\bthiruvananthapuram\b|\bnagpur\b|\bvadodara\b|\bvisakhapatnam\b|\bvizag\b|\bgandhinagar\b|\bbhubaneswar\b/i;
+
 export function isRelevant(title = '') {
   return ROLE_RE.test(title) && !EXCLUDE_RE.test(title);
+}
+
+export function isIndiaLocation(location = '') {
+  return INDIA_RE.test(location);
 }
 
 /** @returns {'Good fit'|'Stretch'} — never gates delivery, only labels it. */

@@ -36,11 +36,33 @@ Not everything needs a research reply. Steer each message with a keyword
 | `done <#id>` | ✅ Clear a saved item (id from `list`). |
 | `cancel <Rid>` | 🗑️ Drop a reminder. |
 | `news` | 🗞️ AI digest on demand · `news sources` lists what's watched. |
+| `here` | 📍 Redirect reminders/jobs/news to wherever you send this (see **Notifications** below). |
 | `help` | ❓ Show this cheatsheet in chat. |
 
 Saved items and reminders live in a small JSON file on the persistent volume,
 so they survive restarts. Reminders are checked every ~30s and delivered into
 your self-chat — they fire even after a redeploy.
+
+## Notifications
+
+WhatsApp doesn't push a phone notification for messages sent to your
+self-chat from a linked device (this bot's own session) — as far as the
+phone is concerned, a message you "sent yourself" from another device
+doesn't need alerting, even though the content is new. Self-chat still
+works fine for typing commands (you're already looking at your phone when
+you do that), but reminders, job matches, and the morning digest can go
+unnoticed for hours.
+
+**Fix: send `here` in a WhatsApp group with just you in it** (create a
+group, add anyone to make it, then remove them). Group messages notify
+normally, including from a linked-device bot. From then on, reminders/jobs/
+news go to that group instead of self-chat; commands still work from
+self-chat as before. Send `here` again from self-chat to switch back.
+
+For safety, `here` only registers a group if you're the only member —
+if anyone else is in it, it refuses and tells you why, since everything
+sent there (reminders, job search activity, the news digest) would
+otherwise be visible to them too.
 
 ## Morning AI digest
 
@@ -125,7 +147,7 @@ src/
   index.js       entry point + lifecycle (client + web server)
   config.js      env config + validation
   net.js         network hardening (IPv4 + connect-timeout/retries)
-  whatsapp.js    whatsapp-web.js client + self-chat listener + plugin dispatch
+  whatsapp.js    whatsapp-web.js client + self-chat/group listener + plugin dispatch + `here`
   commands.js    keyword splitting + natural-language reminder time parsing
   plugins/       one file per feature — see "Writing a plugin" below
     index.js       registry: loads the directory, routes keywords, generates help
@@ -163,6 +185,7 @@ scripts/
   jobs-smoke.js      offline jobs tests (relevance filter, catalog, dedup, overflow cap)
   jobs-live.js       poll every company for real + print the message (--seed to init)
   web-smoke.js       offline tests for /, /news, /jobs: day nav, XSS escaping, empty states
+  here-smoke.js      offline tests for `here`: solo-group registration, other-member refusal
 ```
 
 ## Job watch
@@ -171,9 +194,12 @@ Polls ~123 companies' ATS boards (Greenhouse/Lever/Ashby/SmartRecruiters/
 Workable/Workday/Oracle HCM — see `docs/JOBS.md` for how the catalog and
 adapters were built and verified) every `JOBS_POLL_MS` (default 25 min),
 filters titles to software/full-stack/backend/frontend/AI/forward-deployed
-engineer roles, and messages new matches into your self-chat in real time —
-tagged `Good fit` / `Stretch` (never filtered out, just labeled). `jobs`
-polls on demand; `jobs sources` lists what's watched.
+engineer roles, filters locations to **India only** (a posting with no
+recognizable India signal — including an unqualified "Remote" with no
+country — is excluded, not guessed at), and messages new matches into your
+self-chat in real time — tagged `Good fit` / `Stretch` (never filtered out
+by seniority, just labeled). `jobs` polls on demand; `jobs sources` lists
+what's watched.
 
 **Before enabling on a fresh deploy**, seed the store so day one doesn't
 dump every currently-open posting at once:

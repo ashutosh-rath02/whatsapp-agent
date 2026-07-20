@@ -5,7 +5,7 @@
 import { config } from './config.js';
 import { recentNews, recentJobs } from './store.js';
 import { TIERS } from './newsSources.js';
-import { fmtAbsolute, escapeHtml, trunc } from './format.js';
+import { fmtAbsolute, escapeHtml } from './format.js';
 import { page, navTabs } from './webTheme.js';
 
 function dayKey(ts, tz) {
@@ -161,7 +161,7 @@ export function renderJobsPage(query) {
   const body = `
 <header>
   <h1><a href="/">🗒️ whatsapp-agent</a></h1>
-  <div class="sub">real-time job watch — ${trunc('software / full-stack / backend / frontend / AI / forward-deployed engineer', 90)}</div>
+  <div class="sub">real-time job watch — India-only — software / full-stack / backend / frontend / AI / forward-deployed engineer</div>
   ${navTabs('/jobs')}
 </header>
 

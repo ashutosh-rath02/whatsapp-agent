@@ -6,7 +6,7 @@ import { config } from './config.js';
 import { log } from './logger.js';
 import { loadCompanies } from './jobSources.js';
 import { fetchJobs } from './ats/index.js';
-import { isRelevant, fitFor } from './jobRelevance.js';
+import { isRelevant, fitFor, isIndiaLocation } from './jobRelevance.js';
 import { addJobs, pendingJobs, markJobsDelivered, reload } from './store.js';
 import { trunc } from './format.js';
 
@@ -31,7 +31,7 @@ export async function collectJobs() {
     for (let co = queue.shift(); co; co = queue.shift()) {
       try {
         const raw = await fetchJobs(co);
-        const relevant = raw.filter((j) => isRelevant(j.title));
+        const relevant = raw.filter((j) => isRelevant(j.title) && isIndiaLocation(j.location));
         const stored = addJobs(
           relevant.map((j) => ({
             key: `${co.ats}:${co.slug || co.careerUrl}:${hash(j.id)}`,
@@ -92,7 +92,7 @@ export async function runJobsCycle() {
   return { text: msg.text, commit: () => markJobsDelivered(msg.keys) };
 }
 
-export function startJobsScheduler(client, getSelfChatId) {
+export function startJobsScheduler(client, getNotifyTarget) {
   const pollMs = config.jobs.pollMs;
   let stopped = false;
   let running = false;
@@ -105,7 +105,7 @@ export function startJobsScheduler(client, getSelfChatId) {
         running = true;
         const cycle = await runJobsCycle();
         if (cycle) {
-          const chatId = getSelfChatId();
+          const chatId = getNotifyTarget();
           if (!chatId) {
             log.warn('jobs: new posting(s) found but self-chat id unknown yet — will retry next cycle');
           } else {

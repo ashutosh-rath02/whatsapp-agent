@@ -217,7 +217,7 @@ function nowInTz(tz) {
   return { ymd: `${get('year')}-${get('month')}-${get('day')}`, hm: `${get('hour')}:${get('minute')}` };
 }
 
-export function startNewsScheduler(client, getSelfChatId) {
+export function startNewsScheduler(client, getNotifyTarget) {
   let stopped = false;
   let running = false;
   let timer = null;
@@ -228,7 +228,7 @@ export function startNewsScheduler(client, getSelfChatId) {
       const { ymd, hm } = nowInTz(config.agent.timezone);
       const due = hm >= config.news.digestTime && getMeta('news_last_digest_day') !== ymd;
       if (due && !running) {
-        const chatId = getSelfChatId();
+        const chatId = getNotifyTarget();
         if (!chatId) {
           log.warn('news: digest due but self-chat id unknown yet — will retry');
         } else {
