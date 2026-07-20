@@ -15,6 +15,7 @@
     "smoke:news": "node scripts/news-smoke.js",
     "news:live": "node scripts/news-live.js",
     "smoke:jobs": "node scripts/jobs-smoke.js",
+    "smoke:web": "node scripts/web-smoke.js",
     "jobs:live": "node scripts/jobs-live.js",
     "jobs:seed": "node scripts/jobs-live.js --seed"
   },

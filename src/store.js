@@ -218,6 +218,13 @@ export function markNewsDigested(keys) {
   if (hit) persist();
 }
 
+export function recentNews(limit = 1000) {
+  return load()
+    .news.filter((n) => n.digestedAt)
+    .sort((a, b) => b.digestedAt - a.digestedAt)
+    .slice(0, limit);
+}
+
 export function newsCountBySource() {
   const out = {};
   for (const n of load().news) out[n.source] = (out[n.source] || 0) + 1;

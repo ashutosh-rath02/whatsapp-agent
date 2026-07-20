@@ -58,8 +58,14 @@ demand; an item is only ever reported once.
 
 ## Dashboard
 
-A plain, no-JS web page lists everything you've saved and every pending
-reminder, with one-click **done** / **cancel**:
+A plain, no-JS web app — same "old-school newspaper" theme throughout
+(Georgia serif, warm paper, dark-mode aware), three pages:
+
+| Page | Shows |
+|------|-------|
+| `/` | saved items + pending reminders + recent jobs, one-click **done** / **cancel** |
+| `/news` | AI digest browsable **by day**, grouped into the same tiers as the WhatsApp digest, with prev/next-day nav and a recent-editions strip |
+| `/jobs` | delivered job postings browsable **by day**, `Good fit`/`Stretch` badges, same day nav |
 
 ```
 http://<your-server-ip>:8080
@@ -68,7 +74,9 @@ http://<your-server-ip>:8080
 It binds to **localhost only** until you set `WEB_PASSWORD` (then it serves on
 all interfaces behind HTTP Basic auth). On AWS, also open the port in the
 security group — ideally restricted to your own IP. `GET /health` is always
-open for uptime checks; `GET /api/items` and `/api/reminders` return JSON.
+open for uptime checks; `GET /api/items`, `/api/reminders`, and `/api/jobs`
+return JSON. Day navigation on `/news` and `/jobs` is a plain link
+(`?day=YYYY-MM-DD`), no JS involved.
 
 ## Setup
 
@@ -135,7 +143,9 @@ src/
   ats/           one adapter per ATS platform (see docs/JOBS.md)
     index.js       dispatches to the right adapter by company.ats
     greenhouse.js  lever.js  ashby.js  smartrecruiters.js  workable.js  workday.js  oracle.js
-  web.js         plain HTML dashboard (built-in http, no deps)
+  web.js         dashboard server (built-in http, no deps) + routes
+  webTheme.js    shared CSS/page-shell/nav for every dashboard page
+  webPages.js    /news and /jobs: day-grouped browsing of past digests/postings
   format.js      shared time/text/HTML formatting helpers
   pipeline.js    orchestrates explore → research → summarize
   extract.js     URL detection + dispatch (article / tweet / instagram)
@@ -152,6 +162,7 @@ scripts/
   news-live.js       poll all sources for real + print the digest (--seed to init)
   jobs-smoke.js      offline jobs tests (relevance filter, catalog, dedup, overflow cap)
   jobs-live.js       poll every company for real + print the message (--seed to init)
+  web-smoke.js       offline tests for /, /news, /jobs: day nav, XSS escaping, empty states
 ```
 
 ## Job watch

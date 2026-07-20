@@ -1,0 +1,91 @@
+// Shared look for every dashboard page (/, /news, /jobs): an "old-school
+// newspaper" theme — Georgia serif, warm paper background, double-rule
+// mastheads and datelines — with a dark-mode variant via CSS custom
+// properties. No JS anywhere; a page auto-refreshes every 60s instead.
+export const CSS = `
+:root{
+  --ink:#1a1a1a;--rule:#cfc8b8;--paper:#f6f3ea;--card:#fffdf7;--link:#0b3d91;--faint:#857c63;
+  --accent:#8a2e2e;--good:#2f6b3e;--good-bg:#e8f0e6;--stretch:#8a5a12;--stretch-bg:#f3e9d6;
+  --shadow:0 1px 2px rgba(26,20,10,.05),0 1px 1px rgba(26,20,10,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root{--ink:#ece6d8;--rule:#3d372c;--paper:#17150f;--card:#211e17;--link:#7fa8e6;--faint:#948a72;
+    --accent:#d98a8a;--good:#8fd19e;--good-bg:#1c2b1f;--stretch:#e0b876;--stretch-bg:#2b2318;
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 1px 1px rgba(0,0,0,.3);}
+}
+*{box-sizing:border-box}
+body{max-width:760px;margin:32px auto;padding:0 18px;background:var(--paper);color:var(--ink);
+  font:16px/1.55 Georgia,'Times New Roman',serif;}
+header{border-bottom:3px double var(--ink);margin-bottom:10px;padding-bottom:8px;}
+header h1{font-size:26px;margin:0;letter-spacing:.5px;}
+header h1 a{color:inherit;text-decoration:none;}
+header .sub{color:var(--faint);font-size:13px;font-style:italic;margin-top:2px;}
+nav.tabs{margin-top:10px;font-size:12px;text-transform:uppercase;letter-spacing:1.2px;}
+nav.tabs a{color:var(--faint);text-decoration:none;padding-bottom:2px;}
+nav.tabs a.active{color:var(--ink);border-bottom:2px solid var(--accent);font-weight:bold;}
+nav.tabs .sep{color:var(--rule);margin:0 10px;}
+h2{font-size:14px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--rule);
+  padding-bottom:4px;margin:28px 0 10px;}
+h3.section{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);
+  margin:20px 0 8px;display:flex;align-items:center;gap:8px;}
+h3.section::after{content:'';flex:1;height:1px;background:var(--rule);}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:2px;box-shadow:var(--shadow);
+  padding:10px 13px;margin:8px 0;}
+.card .body{margin:1px 0 4px;white-space:pre-wrap;word-wrap:break-word;}
+.card .meta{font-size:12px;color:var(--faint);}
+.card a{color:var(--link);text-decoration:none;word-break:break-all;}
+.card a:hover{text-decoration:underline;}
+.row{display:flex;justify-content:space-between;gap:10px;align-items:baseline;}
+.id{font-weight:bold;color:var(--faint);font-size:13px;}
+form{display:inline;margin:0;}
+button{font:12px Georgia,serif;background:var(--paper);border:1px solid #b9b1a0;padding:1px 9px;
+  cursor:pointer;color:#555;}
+button:hover{background:#efe9da;}
+.empty{color:var(--faint);font-style:italic;padding:6px 2px;}
+.tag{display:inline-block;background:#efe9da;border:1px solid var(--rule);padding:0 6px;
+  border-radius:2px;font-size:11px;color:var(--faint);margin-left:6px;white-space:nowrap;}
+@media (prefers-color-scheme: dark){.tag{background:#2a2619;}}
+.tag.good{background:var(--good-bg);border-color:var(--good);color:var(--good);}
+.tag.stretch{background:var(--stretch-bg);border-color:var(--stretch);color:var(--stretch);}
+.tag.star{background:var(--stretch-bg);border-color:var(--stretch);color:var(--stretch);}
+.dateline{display:flex;align-items:center;gap:12px;margin:30px 0 14px;
+  font-variant:small-caps;letter-spacing:1px;color:var(--ink);font-size:15px;}
+.dateline::before,.dateline::after{content:'';flex:0 0 auto;width:28px;border-top:3px double var(--ink);}
+.dateline strong{white-space:nowrap;}
+.daynav{display:flex;justify-content:space-between;align-items:center;margin:18px 0;
+  font-size:13px;color:var(--faint);}
+.daynav a{color:var(--link);text-decoration:none;}
+.daynav a:hover{text-decoration:underline;}
+.daynav .empty-side{visibility:hidden;}
+.archive{font-size:12px;color:var(--faint);margin:16px 0;padding:10px 12px;background:var(--card);
+  border:1px solid var(--rule);border-radius:2px;}
+.archive a{color:var(--link);text-decoration:none;margin-right:10px;}
+.archive a.current{color:var(--ink);font-weight:bold;text-decoration:underline;}
+.stat-row{display:flex;gap:18px;font-size:12px;color:var(--faint);margin:4px 0 2px;flex-wrap:wrap;}
+.stat-row strong{color:var(--ink);}
+footer{margin-top:34px;border-top:1px solid var(--rule);padding-top:10px;font-size:12px;color:var(--faint);}
+footer a{color:var(--link);text-decoration:none;}
+code{background:#efe9da;padding:1px 5px;font-size:13px;border-radius:2px;}
+@media (prefers-color-scheme: dark){code{background:#2a2619;}}
+`;
+
+export function page(body, title = 'whatsapp-agent') {
+  return `<!doctype html><html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="60">
+<title>${title}</title>
+<style>${CSS}</style></head>
+<body>${body}</body></html>`;
+}
+
+export function navTabs(active) {
+  const tabs = [
+    ['/', 'Dashboard'],
+    ['/news', '🗞️ News'],
+    ['/jobs', '💼 Jobs'],
+  ];
+  return `<nav class="tabs">${tabs
+    .map(([href, label], i) => `${i ? '<span class="sep">·</span>' : ''}<a href="${href}"${href === active ? ' class="active"' : ''}>${label}</a>`)
+    .join('')}</nav>`;
+}
