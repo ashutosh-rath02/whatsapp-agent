@@ -3,7 +3,7 @@
 // container restarts/redeploys — a reminder set yesterday still fires today.
 import { config } from './config.js';
 import { log } from './logger.js';
-import { dueReminders, markReminderFired } from './store.js';
+import { dueReminders, markReminderFired, reload } from './store.js';
 
 /**
  * @param {import('whatsapp-web.js').Client} client
@@ -18,6 +18,7 @@ export function startReminderScheduler(client, getSelfChatId) {
   async function tick() {
     if (stopped) return;
     try {
+      reload(); // pick up any writes made by another process since our last tick
       const due = dueReminders();
       if (due.length) {
         const chatId = getSelfChatId();

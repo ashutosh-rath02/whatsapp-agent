@@ -7,7 +7,7 @@ import { log } from './logger.js';
 import { loadCompanies } from './jobSources.js';
 import { fetchJobs } from './ats/index.js';
 import { isRelevant, fitFor } from './jobRelevance.js';
-import { addJobs, pendingJobs, markJobsDelivered } from './store.js';
+import { addJobs, pendingJobs, markJobsDelivered, reload } from './store.js';
 import { trunc } from './format.js';
 
 function hash(s = '') {
@@ -21,6 +21,7 @@ function hash(s = '') {
  * @returns {Promise<{ added: number, polled: number, failed: string[] }>}
  */
 export async function collectJobs() {
+  reload(); // pick up any writes made by another process (e.g. a --seed run) since our last cycle
   const companies = loadCompanies();
   const failed = [];
   let added = 0;

@@ -62,14 +62,23 @@ Then send a link or note to your **"Message Yourself"** chat and watch for the
 `http://<your-ec2-ip>:8080` (user `admin`, the password you chose) to see your
 saved items, reminders, and recent job matches, with one-click done/cancel.
 
-**Job watch — seed before enabling.** The first poll otherwise messages every
-currently-open matching posting across ~123 companies at once (1300+ in
-testing). Before the container starts polling for the first time:
+**Job watch — seed before the container starts, not after.** The first poll
+otherwise messages every currently-open matching posting across ~123
+companies at once (1300+ in testing). Seed as a one-off container run
+*before* `docker compose up -d`, so there's no risk of racing the real
+service:
 ```bash
-docker compose exec whatsapp-agent node scripts/jobs-live.js --seed
+docker compose run --rm whatsapp-agent node scripts/jobs-live.js --seed
+docker compose up -d --build
 ```
 This marks everything currently open as already delivered; from then on only
 new postings get sent. Safe to skip if you'd rather see the full backlog once.
+
+(If you do seed against an already-running container — `docker compose exec`
+instead of `run --rm` — it's still safe: every scheduler reloads the store
+from disk at the start of each cycle specifically so a concurrent write like
+this can't get silently overwritten. `run --rm` beforehand is just the
+tidier order, not a required workaround.)
 
 ## 5. Operate
 

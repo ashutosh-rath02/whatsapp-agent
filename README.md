@@ -169,6 +169,9 @@ dump every currently-open posting at once:
 ```bash
 npm run jobs:seed   # or: node scripts/jobs-live.js --seed
 ```
+Run it before the main process starts (see `DEPLOY.md`), though it's safe
+either way — every scheduler reloads the store from disk at the start of
+each cycle, so a concurrent seed write can't get silently overwritten.
 
 ## Writing a plugin
 

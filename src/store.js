@@ -16,6 +16,24 @@ const EMPTY = () => ({ items: [], reminders: [], news: [], jobs: [], meta: {}, s
 
 let state = null;
 
+/**
+ * Drop the in-memory cache so the next load() re-reads from disk.
+ *
+ * Why this exists: state is cached for the life of the process (cheap reads
+ * during a call burst, e.g. ~123 addJobs() calls in one poll cycle). That
+ * cache goes stale the moment a *second* process touches the same file —
+ * which happened for real: a `--seed` run (its own short-lived process)
+ * wrote 1180 pre-delivered jobs to disk, but the already-running main
+ * process had cached an earlier, seed-unaware snapshot at startup. Its next
+ * scheduled persist() overwrote the seed's write entirely, and every
+ * "already seeded" job looked new again. Call reload() at the top of every
+ * scheduler tick so each cycle starts from what's actually on disk, not
+ * from a snapshot that predates it.
+ */
+export function reload() {
+  state = null;
+}
+
 function load() {
   if (state) return state;
   try {

@@ -9,7 +9,7 @@ import { log } from './logger.js';
 import { parseFeed } from './feeds.js';
 import { fetchText, decodeEntities } from './html.js';
 import { enabledSources, TIERS } from './newsSources.js';
-import { addNews, pendingNews, markNewsDigested, getMeta, setMeta } from './store.js';
+import { addNews, pendingNews, markNewsDigested, getMeta, setMeta, reload } from './store.js';
 import { complete } from './llm/index.js';
 import { trunc } from './format.js';
 
@@ -83,6 +83,7 @@ const FETCHERS = { rss: fetchRss, scrape: fetchScrape, hn: fetchHn };
  * @returns {Promise<{ added: number, polled: number, failed: string[] }>}
  */
 export async function collectNews() {
+  reload(); // pick up any writes made by another process (e.g. a --seed run) since our last cycle
   const sources = enabledSources();
   const cutoff = Date.now() - config.news.maxAgeDays * 86_400_000;
   const failed = [];
