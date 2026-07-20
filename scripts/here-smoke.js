@@ -20,7 +20,8 @@ const expect = (cond, what) => {
 const ME_CUS = '918018663432@c.us';
 const ME_LID = '111991289077994@lid';
 const me = new Set([ME_CUS, ME_LID]);
-const fakeClient = { sendMessage: async () => {} };
+const clientSent = [];
+const fakeClient = { sendMessage: async (to, body) => { clientSent.push({ to, body }); } };
 
 function fakeMsg({ to, getChat }) {
   return { to, getChat };
@@ -70,12 +71,45 @@ console.log('\n— group "here": group with someone else in it —');
   expect(sent[0].includes('1 other member'), 'warning states the correct other-member count');
 }
 
-console.log('\n— group "here": getChat() throws —');
+console.log('\n— group "here": getChat() keeps failing (retries, then always notifies) —');
 {
   const before = store.getMeta('notify_group_id');
-  const msg = fakeMsg({ to: 'broken-group@g.us', getChat: async () => { throw new Error('boom'); } });
+  clientSent.length = 0;
+  let calls = 0;
+  const msg = fakeMsg({
+    to: 'broken-group@g.us',
+    getChat: async () => { calls++; throw new Error('boom'); },
+  });
+  const t0 = Date.now();
   await handleHereCommand(fakeClient, msg, me); // must not throw
+  expect(calls === 4, `retried getChat() 4 times before giving up (got ${calls})`);
+  expect(Date.now() - t0 >= 400, 'backed off between retries rather than hammering immediately');
   expect(store.getMeta('notify_group_id') === before, 'failure to load the chat leaves target unchanged (fail closed)');
+  expect(
+    clientSent.length === 1 && clientSent[0].to === 'broken-group@g.us' && clientSent[0].body.includes("Couldn't check this group"),
+    'user is told it failed — never silent, unlike before this fix',
+  );
+}
+
+console.log('\n— group "here": getChat() fails once, then succeeds (retry recovers) —');
+{
+  clientSent.length = 0;
+  let calls = 0;
+  const chat = {
+    id: { _serialized: 'flaky-group@g.us' },
+    participants: [{ id: { _serialized: ME_CUS } }],
+    sendMessage: async (body) => {},
+  };
+  const msg = fakeMsg({
+    to: 'flaky-group@g.us',
+    getChat: async () => {
+      calls++;
+      if (calls < 2) throw new Error('transient');
+      return chat;
+    },
+  });
+  await handleHereCommand(fakeClient, msg, me);
+  expect(store.getMeta('notify_group_id') === 'flaky-group@g.us', 'a transient failure that later succeeds still registers correctly');
 }
 
 console.log('\n— self-chat "here" again: reverts to self-chat —');

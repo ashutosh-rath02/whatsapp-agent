@@ -189,6 +189,25 @@ async function resolveChat(client, msg) {
 }
 
 /**
+ * msg.getChat() is really just client.getChatById() underneath, and that
+ * call intermittently throws a minified internal error (the same "r: r" bug
+ * already worked around for self-chat replies) — for groups too, not just
+ * @lid self-chats. It's transient, so retry a few times before giving up.
+ */
+async function getChatWithRetry(msg, attempts = 4, delayMs = 400) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await msg.getChat();
+    } catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, delayMs * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
+/**
  * "here": redirect unsolicited sends (reminders/jobs/news) to wherever this
  * was sent. In a group, only if it's private — everything sent there would
  * be visible to every member, so a group with anyone besides you is refused
@@ -208,9 +227,17 @@ export async function handleHereCommand(client, msg, me) {
 
   let chat;
   try {
-    chat = await msg.getChat(); // need the real GroupChat here — resolveChat's fallback has no .participants
+    // Need the real GroupChat here (its .participants) — resolveChat's
+    // send-by-id fallback has no participant data, so it can't stand in for
+    // the safety check below the way it can for an ordinary reply.
+    chat = await getChatWithRetry(msg);
   } catch (e) {
-    log.warn(`here: couldn't load group chat — ${e?.message} — try again`);
+    log.warn(`here: couldn't load group chat after retries — ${e?.message}`);
+    // Never fail this silently — before this, a getChat() failure here
+    // looked to the user exactly like "here" had done nothing at all.
+    await client
+      .sendMessage(to, `${config.agent.replyMarker}\n\n⚠️ Couldn't check this group just now (a known WhatsApp Web glitch) — send \`here\` again in a few seconds.`)
+      .catch(() => {});
     return;
   }
   const others = (chat.participants || []).filter((p) => {
