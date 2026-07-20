@@ -12,6 +12,7 @@ function banner() {
   log.info(`Storage: ${dbPath()}`);
   log.info(`Commands: ${config.agent.commandsEnabled ? 'on (save / ask / remind / list)' : 'off'}`);
   log.info(`News: ${config.news.enabled ? `daily digest at ${config.news.digestTime} (${config.agent.timezone || 'host tz'})` : 'off'}`);
+  log.info(`Jobs: ${config.jobs.enabled ? `watching every ~${Math.round(config.jobs.pollMs / 60000)} min` : 'off'}`);
 }
 
 async function main() {

@@ -12,7 +12,7 @@ const AUTH_PATH = process.env.WWEBJS_AUTH_PATH || '.wwebjs_auth';
 const DATA_DIR = process.env.DATA_DIR || path.dirname(path.resolve(AUTH_PATH));
 const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'agent-data.json');
 
-const EMPTY = () => ({ items: [], reminders: [], news: [], meta: {}, seq: { item: 0, reminder: 0 } });
+const EMPTY = () => ({ items: [], reminders: [], news: [], jobs: [], meta: {}, seq: { item: 0, reminder: 0 } });
 
 let state = null;
 
@@ -27,6 +27,7 @@ function load() {
   state.items ||= [];
   state.reminders ||= [];
   state.news ||= [];
+  state.jobs ||= [];
   state.meta ||= {};
   state.seq ||= { item: 0, reminder: 0 };
   return state;
@@ -203,6 +204,56 @@ export function newsCountBySource() {
   const out = {};
   for (const n of load().news) out[n.source] = (out[n.source] || 0) + 1;
   return out;
+}
+
+// ── Job postings (job-watch feature) ─────────────────────────────────────────
+// Same shape as news: `key` (company + posting id) is the dedup identity, so
+// a posting is only ever delivered once, even across restarts.
+
+export function addJobs(items) {
+  const s = load();
+  const seen = new Set(s.jobs.map((j) => j.key));
+  const added = [];
+  for (const it of items) {
+    if (!it.key || seen.has(it.key)) continue;
+    seen.add(it.key);
+    const entry = { ...it, seenAt: Date.now(), deliveredAt: null };
+    s.jobs.push(entry);
+    added.push(entry);
+  }
+  if (added.length) {
+    if (s.jobs.length > 6000) {
+      const keep = s.jobs.filter((j) => !j.deliveredAt);
+      const delivered = s.jobs.filter((j) => j.deliveredAt).sort((a, b) => b.seenAt - a.seenAt);
+      s.jobs = [...keep, ...delivered.slice(0, 5000 - keep.length)];
+    }
+    persist();
+  }
+  return added;
+}
+
+export function pendingJobs() {
+  return load().jobs.filter((j) => !j.deliveredAt);
+}
+
+export function recentJobs(limit = 100) {
+  return load()
+    .jobs.filter((j) => j.deliveredAt)
+    .sort((a, b) => b.deliveredAt - a.deliveredAt)
+    .slice(0, limit);
+}
+
+export function markJobsDelivered(keys) {
+  const s = load();
+  const set = new Set(keys);
+  let hit = false;
+  for (const j of s.jobs) {
+    if (set.has(j.key) && !j.deliveredAt) {
+      j.deliveredAt = Date.now();
+      hit = true;
+    }
+  }
+  if (hit) persist();
 }
 
 // ── Meta (key/value) ─────────────────────────────────────────────────────────

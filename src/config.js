@@ -64,6 +64,17 @@ export const config = {
     // Let the LLM flag 3–5 top headlines at the top of the digest.
     llmPicks: bool(process.env.NEWS_LLM_PICKS, true),
   },
+  jobs: {
+    // Job-watch: poll ~130 companies' ATS boards, filter to SWE/full-stack/
+    // backend/frontend/AI/FDE roles, deliver new matches in real time.
+    enabled: bool(process.env.JOBS_ENABLED, true),
+    // How often to poll every company (min 5 min — be polite to ~130 hosts).
+    pollMs: Math.max(5 * 60 * 1000, Number(process.env.JOBS_POLL_MS || 25 * 60 * 1000)),
+    // Cap on postings shown per message (large companies post in bulk across
+    // many cities for the same role) — the rest are still marked delivered,
+    // never re-sent, just not walled into one message.
+    maxPerMessage: Number(process.env.JOBS_MAX_PER_MESSAGE || 40),
+  },
   web: {
     // Plain web dashboard for browsing saved items / reminders.
     enabled: bool(process.env.WEB_ENABLED, true),

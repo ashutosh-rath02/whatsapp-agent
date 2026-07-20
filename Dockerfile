@@ -40,6 +40,7 @@ RUN npm ci --omit=dev
 
 COPY src ./src
 COPY scripts ./scripts
+COPY data ./data
 
 # Session/auth + the JSON datastore live here — mount a persistent volume at /data.
 VOLUME ["/data"]

@@ -11,6 +11,7 @@ import { shouldProcess } from './pipeline.js';
 import * as store from './store.js';
 import { startReminderScheduler } from './reminders.js';
 import { startNewsScheduler } from './news.js';
+import { startJobsScheduler } from './jobs.js';
 
 const AUTH_PATH = process.env.WWEBJS_AUTH_PATH || '.wwebjs_auth';
 
@@ -105,6 +106,7 @@ export function createClient(registry) {
 
     if (config.reminders.enabled) startReminderScheduler(client, () => selfChatId);
     if (config.news.enabled) startNewsScheduler(client, () => selfChatId);
+    if (config.jobs.enabled) startJobsScheduler(client, () => selfChatId);
   });
 
   client.on('message_create', (msg) => {

@@ -14,6 +14,7 @@ import {
   pendingReminders,
   removeItem,
   cancelReminder,
+  recentJobs,
   dbPath,
 } from './store.js';
 import { relTime, fmtAbsolute, escapeHtml } from './format.js';
@@ -108,10 +109,20 @@ function itemCard(i, tz) {
 </div>`;
 }
 
+function jobCard(j, tz) {
+  return `<div class="card">
+  <div class="row"><span class="id">${escapeHtml(j.company)}</span>
+    <span class="tag">${escapeHtml(j.fit)}</span></div>
+  <div class="body"><a href="${escapeHtml(j.url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(j.title)}</a></div>
+  <div class="meta">${escapeHtml(j.location || '')}${j.location ? ' · ' : ''}${escapeHtml(fmtAbsolute(j.deliveredAt, tz))}</div>
+</div>`;
+}
+
 export function renderDashboard() {
   const tz = config.agent.timezone;
   const items = listItems(500);
   const rem = pendingReminders(500);
+  const jobs = recentJobs(100);
 
   const remSection = rem.length
     ? rem.map((r) => reminderCard(r, tz)).join('')
@@ -121,10 +132,14 @@ export function renderDashboard() {
     ? items.map((i) => itemCard(i, tz)).join('')
     : '<div class="empty">Nothing saved. Send <code>save &lt;link or note&gt;</code></div>';
 
+  const jobSection = jobs.length
+    ? jobs.map((j) => jobCard(j, tz)).join('')
+    : '<div class="empty">No job matches delivered yet.</div>';
+
   const body = `
 <header>
   <h1>🗒️ whatsapp-agent</h1>
-  <div class="sub">your saved links, notes &amp; reminders</div>
+  <div class="sub">your saved links, notes, reminders &amp; job matches</div>
 </header>
 
 <h2>⏰ Reminders <span class="tag">${rem.length}</span></h2>
@@ -133,11 +148,14 @@ ${remSection}
 <h2>📌 Saved <span class="tag">${items.length}</span></h2>
 ${itemSection}
 
+<h2>💼 Recent jobs <span class="tag">${jobs.length}</span></h2>
+${jobSection}
+
 <footer>
   <div><strong>Send in WhatsApp:</strong>
     <code>save …</code> <code>ask …</code> <code>remind me in 2h: …</code>
-    <code>list</code> <code>find …</code> <code>done #id</code></div>
-  <div style="margin-top:6px">${items.length} saved · ${rem.length} reminders · data <code>${escapeHtml(dbPath())}</code></div>
+    <code>list</code> <code>find …</code> <code>done #id</code> <code>jobs</code></div>
+  <div style="margin-top:6px">${items.length} saved · ${rem.length} reminders · ${jobs.length} jobs shown · data <code>${escapeHtml(dbPath())}</code></div>
 </footer>`;
   return page(body);
 }
@@ -169,6 +187,8 @@ export function startWebServer() {
       return send(res, 200, JSON.stringify(listItems(500)), 'application/json');
     if (req.method === 'GET' && p === '/api/reminders')
       return send(res, 200, JSON.stringify(pendingReminders(500)), 'application/json');
+    if (req.method === 'GET' && p === '/api/jobs')
+      return send(res, 200, JSON.stringify(recentJobs(500)), 'application/json');
     if (req.method === 'POST' && (m = p.match(/^\/items\/(\d+)\/done$/))) {
       removeItem(Number(m[1]));
       return redirect(res, '/');

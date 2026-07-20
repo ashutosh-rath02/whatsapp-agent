@@ -106,6 +106,9 @@ open for uptime checks; `GET /api/items` and `/api/reminders` return JSON.
 | `WHISPER_MODEL` | `whisper-1` | Transcription model |
 | `MIN_TEXT_LENGTH` | `12` | Min length for a no-link note to trigger |
 | `DEBUG` | `false` | Verbose logging |
+| `JOBS_ENABLED` | `true` | Job-watch: poll company ATS boards, message new matches |
+| `JOBS_POLL_MS` | `1500000` (25 min) | How often to poll every company (min 5 min) |
+| `JOBS_MAX_PER_MESSAGE` | `40` | Cap postings shown per message (rest still marked delivered) |
 
 ## Project layout
 
@@ -119,12 +122,19 @@ src/
   plugins/       one file per feature — see "Writing a plugin" below
     index.js       registry: loads the directory, routes keywords, generates help
     research.js    the fallback: explore → research → summarize
-    save.js  remind.js  list.js  find.js  done.js  cancel.js  news.js  help.js
-  store.js       JSON datastore (saved items, reminders, news, meta) on /data
+    save.js  remind.js  list.js  find.js  done.js  cancel.js  news.js  jobs.js  help.js
+  store.js       JSON datastore (saved items, reminders, news, jobs, meta) on /data
   reminders.js   scheduler that delivers due reminders into the self-chat
   news.js        news engine: poll sources → dedupe → digest → morning delivery
   newsSources.js the ~55-stream watch catalog (feeds, scrapes, HN API)
   feeds.js       dependency-free RSS/Atom item extraction
+  jobs.js        job-watch engine: poll companies → filter → dedupe → real-time delivery
+  jobSources.js  loads data/*.csv into pollable company targets
+  jobRelevance.js title-based role filter (SWE/full-stack/backend/frontend/AI/FDE) + fit tag
+  csv.js         dependency-free CSV parser (data/*.csv have quoted/commaful fields)
+  ats/           one adapter per ATS platform (see docs/JOBS.md)
+    index.js       dispatches to the right adapter by company.ats
+    greenhouse.js  lever.js  ashby.js  smartrecruiters.js  workable.js  workday.js  oracle.js
   web.js         plain HTML dashboard (built-in http, no deps)
   format.js      shared time/text/HTML formatting helpers
   pipeline.js    orchestrates explore → research → summarize
@@ -140,6 +150,24 @@ scripts/
   commands-smoke.js  test routing + plugins + store + dashboard offline
   news-smoke.js      offline news tests (feed fixtures, dedup, digest build)
   news-live.js       poll all sources for real + print the digest (--seed to init)
+  jobs-smoke.js      offline jobs tests (relevance filter, catalog, dedup, overflow cap)
+  jobs-live.js       poll every company for real + print the message (--seed to init)
+```
+
+## Job watch
+
+Polls ~123 companies' ATS boards (Greenhouse/Lever/Ashby/SmartRecruiters/
+Workable/Workday/Oracle HCM — see `docs/JOBS.md` for how the catalog and
+adapters were built and verified) every `JOBS_POLL_MS` (default 25 min),
+filters titles to software/full-stack/backend/frontend/AI/forward-deployed
+engineer roles, and messages new matches into your self-chat in real time —
+tagged `Good fit` / `Stretch` (never filtered out, just labeled). `jobs`
+polls on demand; `jobs sources` lists what's watched.
+
+**Before enabling on a fresh deploy**, seed the store so day one doesn't
+dump every currently-open posting at once:
+```bash
+npm run jobs:seed   # or: node scripts/jobs-live.js --seed
 ```
 
 ## Writing a plugin

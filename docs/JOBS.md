@@ -234,20 +234,62 @@ per-company manual research needed. `data/companies.csv` and
 `data/funded-startups.csv` now carry `ats`, `career_url`, and `confidence`
 columns.
 
-## Rollout plan
+## Rollout
 
-- **Phase 1** — build 7 ATS adapters (not 4) + `jobs.js` engine + `jobs`
-  plugin, wired to the now ~123+ resolved companies. Real-time delivery
-  per the cadence decision: poll loop every 20–30 min, message on new
-  match. Fit-tagging (Good fit / Stretch) reusing the keyword+LLM
-  relevance pattern from the news digest. Offline smoke test + a live
-  test against the real APIs before touching WhatsApp, then deploy.
-- **Phase 2** — the 451 still-`needs-resolution` and 109 `custom` rows
-  didn't hit a guessable slug; picking those up needs either a targeted
-  web search per company or accepting they stay uncovered. Not blocking
-  Phase 1 — the resolved set already covers most of the AI-native/FDE
-  segment you actually care about.
-- **Phase 3 (stretch)** — hand-picked scraping for the highest-priority
-  handful of true-custom companies (OpenAI-adjacent labs that turn out to
-  have no ATS at all, or specific must-watch big names), same pattern as
-  the news digest's Anthropic scraper.
+### Phase 1 — shipped (2026-07-20)
+
+Built and deployed: 7 ATS adapters (`src/ats/`), `src/jobs.js` (poll →
+title-relevance filter → fit tag → dedupe → real-time delivery), the
+`jobs` plugin (`jobs` on demand, `jobs sources` listing), and a
+`src/jobSources.js` loader that reads `data/*.csv` directly — so the
+catalog stays a plain spreadsheet-editable file, no code changes needed to
+add or drop a company.
+
+**Live end-to-end test result**: 123 pollable companies (of the 133
+resolved — SuccessFactors/Phenom's 10 have no adapter, see below), polled
+in 24s, found **1342 relevant open postings** across 63 companies,
+including exactly the target roles: `Forward Deployed Engineer` at
+Twilio/Postman/HighRadius/Scale AI, `AI Engineer - FDE` at Databricks,
+`Applied AI Engineer` at Anthropic, `Backend Engineer`/`Full-Stack
+Engineer`/`Software Engineer` broadly. Fit tagging worked as intended —
+`Software Engineer` → Good fit, `Senior Software Engineer` → Stretch,
+both delivered (per the "capture broadly, tag fit" decision).
+
+**1342 on a cold start confirmed the digest needs two safety features**,
+both built before deploy:
+- **Seed script** (`node scripts/jobs-live.js --seed`, `npm run
+  jobs:seed`) — marks every currently-open posting as already delivered.
+  Run once before turning the feature on for the first time; from then on
+  only postings that open after that point get sent.
+- **Per-message cap** (`JOBS_MAX_PER_MESSAGE`, default 40) — a single
+  company can post the same role open across a dozen cities (Databricks:
+  246 matches in the test run); capping keeps a message readable. Capped
+  postings are still marked delivered, so they're never re-sent, just not
+  walled into one giant text.
+
+Also added a **Recent jobs** section to the existing web dashboard
+(`/api/jobs`), since the overflow message points there for anything
+capped out of a given cycle.
+
+**Bug caught in this phase**: `data/companies.csv`'s `ats` column uses
+`oracle-hcm` (from the original probe's label), but the adapter module is
+named `oracle` — a naive `ADAPTERS[ats]` lookup silently dropped all 4
+Oracle HCM companies (including Dell, whose board has the FDE-relevant
+posting noted above). Fixed by keying the adapter registry to
+`'oracle-hcm'` explicitly rather than assuming the module name matches
+the data label.
+
+### Phase 2 — not done
+
+The 452 `needs-resolution` and 109 `custom` companies didn't hit a
+guessable slug and have no adapter (SuccessFactors ×7, Phenom ×3 — their
+endpoints need per-company discovery slug-guessing couldn't reliably do).
+Not blocking — the resolved set already covers most of the AI-native/FDE
+segment this was built for. Picking up more is additive: add a row to
+`data/companies.csv` with a working `ats`/`career_url`, no code change
+needed.
+
+### Phase 3 (stretch, not done)
+
+Hand-picked scraping for a handful of true-custom high-priority companies
+with no ATS at all, same pattern as the news digest's Anthropic scraper.

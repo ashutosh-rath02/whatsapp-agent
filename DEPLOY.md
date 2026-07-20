@@ -60,7 +60,16 @@ Then send a link or note to your **"Message Yourself"** chat and watch for the
 
 **Dashboard:** with `WEB_PASSWORD` set and port 8080 open, browse to
 `http://<your-ec2-ip>:8080` (user `admin`, the password you chose) to see your
-saved items and reminders, with one-click done/cancel.
+saved items, reminders, and recent job matches, with one-click done/cancel.
+
+**Job watch — seed before enabling.** The first poll otherwise messages every
+currently-open matching posting across ~123 companies at once (1300+ in
+testing). Before the container starts polling for the first time:
+```bash
+docker compose exec whatsapp-agent node scripts/jobs-live.js --seed
+```
+This marks everything currently open as already delivered; from then on only
+new postings get sent. Safe to skip if you'd rather see the full backlog once.
 
 ## 5. Operate
 
@@ -116,6 +125,8 @@ reel-audio transcription.
 | `NEWS_ENABLED`, `NEWS_DIGEST_TIME` | morning AI digest on/off and delivery time (HH:MM in `AGENT_TZ`) |
 | `NEWS_SOURCES_DISABLED` | mute news sources by id (see `src/newsSources.js`) |
 | `NEWS_LLM_PICKS`, `NEWS_MAX_ITEMS` | LLM top-picks section; digest length cap |
+| `JOBS_ENABLED`, `JOBS_POLL_MS` | job-watch on/off and poll interval (default 25 min) |
+| `JOBS_MAX_PER_MESSAGE` | cap postings shown per message (default 40) |
 | `AGENT_TZ` | timezone for showing reminder/saved times (box is UTC) |
 | `WEB_ENABLED`, `WEB_PORT` | dashboard on/off and port (default 8080) |
 | `WEB_USER`, `WEB_PASSWORD` | dashboard auth; no password ⇒ localhost-only |

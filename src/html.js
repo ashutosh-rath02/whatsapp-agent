@@ -7,11 +7,13 @@ export const BROWSER_UA =
  * Fetch a URL as text with a browser-like UA and a hard timeout.
  * @returns {Promise<{ ok: boolean, status: number, text: string, finalUrl: string }>}
  */
-export async function fetchText(url, { timeout = 15000, headers = {} } = {}) {
+export async function fetchText(url, { timeout = 15000, headers = {}, method = 'GET', body } = {}) {
   const ctrl = new AbortController();
   const to = setTimeout(() => ctrl.abort(), timeout);
   try {
     const res = await fetch(url, {
+      method,
+      body,
       headers: {
         'user-agent': BROWSER_UA,
         'accept-language': 'en-US,en;q=0.9',
