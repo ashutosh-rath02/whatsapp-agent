@@ -97,14 +97,20 @@ A plain, no-JS web app — same "old-school newspaper" theme throughout
 |------|-------|
 | `/` | saved items + pending reminders + recent jobs, one-click **done** / **cancel** |
 | `/news` | AI digest browsable **by day**, grouped into the same tiers as the WhatsApp digest, with prev/next-day nav and a recent-editions strip |
-| `/jobs` | delivered job postings browsable **by day**, `Good fit`/`Stretch` badges, same day nav |
+| `/jobs` | delivered job postings, two views — **by day** or **by company** |
+
+`/jobs` has a toggle at the top: **📅 By day** (default — one day at a
+time, prev/next nav) or **🏢 By company** (every company that's ever
+matched, alphabetical, each one a collapsible accordion — click to expand
+and see its roles). Company view uses the browser's native `<details>`
+element, so expand/collapse works with zero JavaScript.
 
 Every job posting has one-click triage buttons — **applied** / **not
-applicable** / **reset** — on both `/` and `/jobs`. A posting marked *not
-applicable* stays visible but visually dimmed rather than disappearing, so
-a misclick is always reversible. Status is purely for your own tracking —
-it never affects delivery or dedup, so marking something doesn't change
-what the agent sends you.
+applicable** / **reset** — on `/`, `/jobs`, and inside the company
+accordions. A posting marked *not applicable* stays visible but visually
+dimmed rather than disappearing, so a misclick is always reversible.
+Status is purely for your own tracking — it never affects delivery or
+dedup, so marking something doesn't change what the agent sends you.
 
 ```
 http://<your-server-ip>:8080

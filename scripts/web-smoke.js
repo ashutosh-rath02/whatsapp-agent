@@ -25,6 +25,8 @@ expect(!renderNewsPage({}).includes('undefined'), 'news page empty state has no 
 expect(renderNewsPage({}).includes('No digests'), 'news page shows empty-state copy');
 expect(!renderJobsPage({}).includes('undefined'), 'jobs page empty state has no "undefined"');
 expect(renderJobsPage({}).includes('No matches'), 'jobs page shows empty-state copy');
+expect(!renderJobsPage({ view: 'company' }).includes('undefined'), 'jobs company-view empty state has no "undefined"');
+expect(renderJobsPage({ view: 'company' }).includes('No matches'), 'jobs company-view shows the same empty-state copy before any data exists');
 
 console.log('\n— theme —');
 expect(CSS.includes('prefers-color-scheme: dark'), 'dark-mode variant present');
@@ -143,6 +145,30 @@ const jobsCapped = renderJobsPage({});
 expect(jobsCapped.includes('<strong>251</strong> postings'), 'stat-row shows the true uncapped total (1 existing + 250 new = 251)');
 expect((jobsCapped.match(/CapCo\d+/g) || []).length <= 200, 'rendered card count stays within the cap');
 expect(jobsCapped.includes('more from this day'), 'overflow notice shown when a day exceeds the cap');
+
+console.log('\n— jobs page: by-company view (accordion) —');
+{
+  const html = renderJobsPage({ view: 'company' });
+  expect(html.includes('<details class="company">'), 'renders native <details> accordions (no JS needed)');
+  expect(html.includes('<summary>'), 'each company has a <summary> click target');
+  expect(html.includes('Acme'), 'shows a company from "today"');
+  expect(html.includes('Beta Inc'), 'ALSO shows a company from "yesterday" — this view spans every day, not just one');
+  expect(html.includes('🏢 By company') && html.includes('class="active"'), 'toggle nav marks "By company" as the active view');
+  expect(html.includes('📅 By day'), 'toggle nav still links back to the day view');
+  expect(!html.includes('<div class="daynav">'), 'no day prev/next nav in company view — it is not day-scoped (CSS class definition alone doesn\'t count, only checking for the element)');
+}
+
+console.log('\n— jobs page: by-company view per-company cap —');
+store.addJobs(Array.from({ length: 40 }, (_, i) => ({
+  key: `bigco${i}`, company: 'BigCo', title: `Role ${i}`, url: `https://example.com/bigco${i}`, location: '', fit: 'Good fit',
+})));
+store.markJobsDelivered(Array.from({ length: 40 }, (_, i) => `bigco${i}`));
+{
+  const html = renderJobsPage({ view: 'company' });
+  expect(html.includes('40 roles'), 'accordion header shows the true total for that company (40)');
+  expect((html.match(/Role \d+/g) || []).length <= 30, 'rendered roles for one company stay within the per-company cap (30)');
+  expect(html.includes('more from BigCo'), 'overflow notice names the specific company it was capped for');
+}
 
 console.log('\n— dashboard still renders with all data present —');
 const dash = renderDashboard();

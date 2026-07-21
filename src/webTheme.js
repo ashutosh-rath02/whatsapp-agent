@@ -26,6 +26,7 @@ nav.tabs{margin-top:10px;font-size:12px;text-transform:uppercase;letter-spacing:
 nav.tabs a{color:var(--faint);text-decoration:none;padding-bottom:2px;}
 nav.tabs a.active{color:var(--ink);border-bottom:2px solid var(--accent);font-weight:bold;}
 nav.tabs .sep{color:var(--rule);margin:0 10px;}
+nav.tabs.sub-toggle{margin:16px 0 4px;font-size:11px;}
 h2{font-size:14px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--rule);
   padding-bottom:4px;margin:28px 0 10px;}
 h3.section{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);
@@ -55,6 +56,19 @@ button:hover{background:#efe9da;}
 .actions{margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;}
 .card.skipped{opacity:.55;}
 .card.skipped:hover{opacity:1;}
+details.company{background:var(--card);border:1px solid var(--rule);border-radius:2px;
+  margin:8px 0;box-shadow:var(--shadow);overflow:hidden;}
+details.company summary{padding:11px 14px;cursor:pointer;display:flex;justify-content:space-between;
+  align-items:center;list-style:none;gap:10px;}
+details.company summary::-webkit-details-marker{display:none;}
+details.company summary::marker{content:'';}
+details.company summary::before{content:'▸';color:var(--faint);margin-right:9px;font-size:11px;}
+details.company[open] summary::before{content:'▾';}
+details.company summary:hover{background:#efe9da;}
+@media (prefers-color-scheme: dark){details.company summary:hover{background:#2a2619;}}
+details.company .company-body{padding:2px 14px 12px;border-top:1px solid var(--rule);}
+details.company .company-body .card{box-shadow:none;}
+.company-name{font-weight:bold;font-variant:small-caps;letter-spacing:.3px;}
 .dateline{display:flex;align-items:center;gap:12px;margin:30px 0 14px;
   font-variant:small-caps;letter-spacing:1px;color:var(--ink);font-size:15px;}
 .dateline::before,.dateline::after{content:'';flex:0 0 auto;width:28px;border-top:3px double var(--ink);}

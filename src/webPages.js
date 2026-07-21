@@ -124,11 +124,12 @@ ${archiveStrip('/news', days, current)}
 
 // ── Jobs ─────────────────────────────────────────────────────────────────────
 
-function jobItemRow(j) {
+/** @param {boolean} showCompany false when already nested under that company's own accordion */
+function jobItemRow(j, showCompany = true) {
   const fitClass = j.fit === 'Good fit' ? 'good' : 'stretch';
   const cardClass = j.status === 'not_applicable' ? ' skipped' : '';
   return `<div class="card${cardClass}">
-  <div class="row"><span class="id">${escapeHtml(j.company)}</span>
+  <div class="row"><span class="id">${showCompany ? escapeHtml(j.company) : ' '}</span>
     <span>${jobStatusBadge(j.status)}<span class="tag ${fitClass}">${escapeHtml(j.fit)}</span></span></div>
   <div class="body"><a href="${escapeHtml(j.url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(j.title)}</a></div>
   ${j.location ? `<div class="meta">${escapeHtml(j.location)}</div>` : ''}
@@ -136,18 +137,81 @@ function jobItemRow(j) {
 </div>`;
 }
 
+function jobsViewToggle(active) {
+  const tabs = [
+    ['/jobs', '📅 By day', 'day'],
+    ['/jobs?view=company', '🏢 By company', 'company'],
+  ];
+  return `<nav class="tabs sub-toggle">${tabs
+    .map(([href, label, key], i) => `${i ? '<span class="sep">·</span>' : ''}<a href="${href}"${key === active ? ' class="active"' : ''}>${label}</a>`)
+    .join('')}</nav>`;
+}
+
+function jobsEmptyPage(view) {
+  const body = `<header><h1><a href="/">🗒️ whatsapp-agent</a></h1>${navTabs('/jobs')}</header>
+<h2>💼 Jobs</h2>
+${jobsViewToggle(view)}
+<div class="empty">No matches delivered yet — the watcher polls every ~${Math.round(config.jobs.pollMs / 60000)} min, or send <code>jobs</code> in WhatsApp to trigger a poll now.</div>`;
+  return page(body, 'Jobs — whatsapp-agent');
+}
+
+function companyAccordion(company, jobs) {
+  const CAP = 30;
+  const openCount = jobs.filter((j) => j.status === 'open').length;
+  const shown = jobs.slice(0, CAP);
+  const overflow = jobs.length - shown.length;
+  const countLabel = `${jobs.length} role${jobs.length === 1 ? '' : 's'}${openCount < jobs.length ? ` · ${openCount} open` : ''}`;
+  return `<details class="company">
+  <summary><span class="company-name">${escapeHtml(company)}</span><span class="tag">${countLabel}</span></summary>
+  <div class="company-body">
+    ${shown.map((j) => jobItemRow(j, false)).join('')}
+    ${overflow > 0 ? `<div class="empty">+${overflow} more from ${escapeHtml(company)} — narrowed to the most recent ${CAP}.</div>` : ''}
+  </div>
+</details>`;
+}
+
+function renderJobsByCompany() {
+  const tz = config.agent.timezone;
+  const all = recentJobs(5000); // across every day, not just one — the whole point of this view
+  if (!all.length) return jobsEmptyPage('company');
+
+  const byCompany = new Map();
+  for (const j of all) {
+    if (!byCompany.has(j.company)) byCompany.set(j.company, []);
+    byCompany.get(j.company).push(j);
+  }
+  for (const list of byCompany.values()) list.sort((a, b) => b.deliveredAt - a.deliveredAt);
+
+  const companies = [...byCompany.keys()].sort((a, b) => a.localeCompare(b));
+  const COMPANY_CAP = 150;
+  const shownCompanies = companies.slice(0, COMPANY_CAP);
+  const companyOverflow = companies.length - shownCompanies.length;
+
+  const body = `
+<header>
+  <h1><a href="/">🗒️ whatsapp-agent</a></h1>
+  <div class="sub">real-time job watch — India-only — software / full-stack / backend / frontend / AI / forward-deployed engineer</div>
+  ${navTabs('/jobs')}
+</header>
+
+${jobsViewToggle('company')}
+<div class="stat-row"><span><strong>${all.length}</strong> postings</span><span><strong>${companies.length}</strong> companies</span></div>
+${shownCompanies.map((c) => companyAccordion(c, byCompany.get(c))).join('')}
+${companyOverflow > 0 ? `<div class="empty">+${companyOverflow} more companies not shown.</div>` : ''}
+
+<footer>Click a company to expand it. Send <code>jobs</code> in WhatsApp to poll now, or <code>jobs sources</code> to see every company watched.</footer>`;
+  return page(body, 'Jobs by company — whatsapp-agent');
+}
+
 export function renderJobsPage(query) {
+  if (query.view === 'company') return renderJobsByCompany();
+
   const tz = config.agent.timezone;
   const all = recentJobs(3000);
   const byDay = groupByDay(all, 'deliveredAt', tz);
   const days = [...byDay.keys()];
 
-  if (!days.length) {
-    const body = `<header><h1><a href="/">🗒️ whatsapp-agent</a></h1>${navTabs('/jobs')}</header>
-<h2>💼 Jobs</h2>
-<div class="empty">No matches delivered yet — the watcher polls every ~${Math.round(config.jobs.pollMs / 60000)} min, or send <code>jobs</code> in WhatsApp to trigger a poll now.</div>`;
-    return page(body, 'Jobs — whatsapp-agent');
-  }
+  if (!days.length) return jobsEmptyPage('day');
 
   const { current, newer, older } = resolveDay(days, query.day);
   const dayItems = (byDay.get(current) || []).slice().sort((a, b) => a.company.localeCompare(b.company));
@@ -169,9 +233,10 @@ export function renderJobsPage(query) {
   ${navTabs('/jobs')}
 </header>
 
+${jobsViewToggle('day')}
 ${dayNav('/jobs', tz, { current, newer, older })}
 <div class="stat-row"><span><strong>${dayItems.length}</strong> postings</span><span><strong>${companyCount}</strong> companies</span><span><strong>${goodFit}</strong> good fit</span><span><strong>${applied}</strong> applied</span></div>
-${items.map(jobItemRow).join('')}
+${items.map((j) => jobItemRow(j, true)).join('')}
 ${overflow > 0 ? `<div class="empty">+${overflow} more from this day — narrowed to the first ${RENDER_CAP}, alphabetical by company.</div>` : ''}
 ${archiveStrip('/jobs', days, current)}
 
