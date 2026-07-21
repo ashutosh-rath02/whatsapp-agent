@@ -98,30 +98,33 @@ is still plain HTML with no JS — the one exception is noted below.
 |------|-------|
 | `/` | saved items + pending reminders + recent jobs, one-click **done** / **cancel** |
 | `/news` | AI digest browsable **by day**, grouped into the same tiers as the WhatsApp digest, with prev/next-day nav and a recent-editions strip |
-| `/jobs` | delivered job postings, two views — **by day** or **by company** |
+| `/jobs` | delivered job postings, one day at a time, grouped into per-company accordions |
 
 Nothing is hidden or capped on these pages — a heavy day or a company with
 dozens of roles renders in full, not just the first N (the WhatsApp
 message itself still caps what it sends in one go, since a chat message
 has a real length limit a web page doesn't).
 
-`/jobs` has a toggle at the top: **📅 By day** (default — one day at a
-time, prev/next nav) or **🏢 By company** (every company that's ever
-matched, alphabetical, each one a collapsible accordion — click to expand
-and see its roles). Company view uses the browser's native `<details>`
-element, so expand/collapse works with zero JavaScript.
+`/jobs` shows one day at a time (prev/next nav, same as `/news`), with
+that day's postings grouped into collapsible per-company accordions
+(alphabetical, click to expand and see the roles) — using the browser's
+native `<details>` element, so expand/collapse works with zero
+JavaScript. Within each company, roles you haven't triaged yet sort above
+ones already marked applied or not applicable, so what still needs a
+decision stays on top instead of getting buried under stuff you've
+already handled. The homepage's "Recent jobs" list sorts the same way.
 
 Every job posting has one-click triage buttons — **applied** / **not
-applicable** / **reset** — on `/`, `/jobs`, and inside the company
-accordions. A posting marked *not applicable* stays visible but visually
-dimmed rather than disappearing, so a misclick is always reversible.
-Status is purely for your own tracking — it never affects delivery or
-dedup, so marking something doesn't change what the agent sends you.
-Clicking a triage button updates that one card in place via a small
-scoped `<script>` (`webTheme.js`'s `STATUS_SCRIPT`) — no full-page reload.
-It's the only JS on the dashboard, and it degrades gracefully: with JS off,
-or if the background request fails, the same button is a plain HTML form
-that falls back to a normal POST + page reload.
+applicable** / **reset** — on `/` and inside the `/jobs` accordions. A
+posting marked *not applicable* stays visible but visually dimmed rather
+than disappearing, so a misclick is always reversible. Status is purely
+for your own tracking — it never affects delivery or dedup, so marking
+something doesn't change what the agent sends you. Clicking a triage
+button updates that one card in place via a small scoped `<script>`
+(`webTheme.js`'s `STATUS_SCRIPT`) — no full-page reload. It's the only JS
+on the dashboard, and it degrades gracefully: with JS off, or if the
+background request fails, the same button is a plain HTML form that
+falls back to a normal POST + page reload.
 
 ```
 http://<your-server-ip>:8080

@@ -6,7 +6,7 @@ import { config } from './config.js';
 import { recentNews, recentJobs } from './store.js';
 import { TIERS } from './newsSources.js';
 import { fmtAbsolute, escapeHtml } from './format.js';
-import { page, navTabs, jobStatusBadge, jobStatusActions } from './webTheme.js';
+import { page, navTabs, jobStatusBadge, jobStatusActions, sortByStatus } from './webTheme.js';
 
 function dayKey(ts, tz) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: tz || undefined, year: 'numeric', month: '2-digit', day: '2-digit' }).format(ts);
@@ -137,20 +137,9 @@ function jobItemRow(j, showCompany = true) {
 </div>`;
 }
 
-function jobsViewToggle(active) {
-  const tabs = [
-    ['/jobs', '📅 By day', 'day'],
-    ['/jobs?view=company', '🏢 By company', 'company'],
-  ];
-  return `<nav class="tabs sub-toggle">${tabs
-    .map(([href, label, key], i) => `${i ? '<span class="sep">·</span>' : ''}<a href="${href}"${key === active ? ' class="active"' : ''}>${label}</a>`)
-    .join('')}</nav>`;
-}
-
-function jobsEmptyPage(view) {
+function jobsEmptyPage() {
   const body = `<header><h1><a href="/">🗒️ whatsapp-agent</a></h1>${navTabs('/jobs')}</header>
 <h2>💼 Jobs</h2>
-${jobsViewToggle(view)}
 <div class="empty">No matches delivered yet — the watcher polls every ~${Math.round(config.jobs.pollMs / 60000)} min, or send <code>jobs</code> in WhatsApp to trigger a poll now.</div>`;
   return page(body, 'Jobs — whatsapp-agent');
 }
@@ -166,18 +155,28 @@ function companyAccordion(company, jobs) {
 </details>`;
 }
 
-function renderJobsByCompany() {
+export function renderJobsPage(query) {
   const tz = config.agent.timezone;
-  const all = recentJobs(6000); // matches store.js's own max retention — this view shows everything the store still holds
-  if (!all.length) return jobsEmptyPage('company');
+  const all = recentJobs(6000); // matches store.js's own max retention — no hidden cap on how far back you can page
+  const byDay = groupByDay(all, 'deliveredAt', tz);
+  const days = [...byDay.keys()];
 
+  if (!days.length) return jobsEmptyPage();
+
+  const { current, newer, older } = resolveDay(days, query.day);
+  const dayItems = byDay.get(current) || [];
+  const companyCount = new Set(dayItems.map((j) => j.company)).size;
+  const goodFit = dayItems.filter((j) => j.fit === 'Good fit').length;
+  const applied = dayItems.filter((j) => j.status === 'applied').length;
+
+  // Group that day's postings by company; within each company, untriaged
+  // (open) roles sort above ones already marked applied / not applicable.
   const byCompany = new Map();
-  for (const j of all) {
+  for (const j of dayItems) {
     if (!byCompany.has(j.company)) byCompany.set(j.company, []);
     byCompany.get(j.company).push(j);
   }
-  for (const list of byCompany.values()) list.sort((a, b) => b.deliveredAt - a.deliveredAt);
-
+  for (const [company, list] of byCompany) byCompany.set(company, sortByStatus(list));
   const companies = [...byCompany.keys()].sort((a, b) => a.localeCompare(b));
 
   const body = `
@@ -187,43 +186,11 @@ function renderJobsByCompany() {
   ${navTabs('/jobs')}
 </header>
 
-${jobsViewToggle('company')}
-<div class="stat-row"><span><strong>${all.length}</strong> postings</span><span><strong>${companies.length}</strong> companies</span></div>
-${companies.map((c) => companyAccordion(c, byCompany.get(c))).join('')}
-
-<footer>Click a company to expand it. Send <code>jobs</code> in WhatsApp to poll now, or <code>jobs sources</code> to see every company watched.</footer>`;
-  return page(body, 'Jobs by company — whatsapp-agent');
-}
-
-export function renderJobsPage(query) {
-  if (query.view === 'company') return renderJobsByCompany();
-
-  const tz = config.agent.timezone;
-  const all = recentJobs(6000); // matches store.js's own max retention — no hidden cap on how far back you can page
-  const byDay = groupByDay(all, 'deliveredAt', tz);
-  const days = [...byDay.keys()];
-
-  if (!days.length) return jobsEmptyPage('day');
-
-  const { current, newer, older } = resolveDay(days, query.day);
-  const dayItems = (byDay.get(current) || []).slice().sort((a, b) => a.company.localeCompare(b.company));
-  const companyCount = new Set(dayItems.map((j) => j.company)).size;
-  const goodFit = dayItems.filter((j) => j.fit === 'Good fit').length;
-  const applied = dayItems.filter((j) => j.status === 'applied').length;
-
-  const body = `
-<header>
-  <h1><a href="/">🗒️ whatsapp-agent</a></h1>
-  <div class="sub">real-time job watch — India-only — software / full-stack / backend / frontend / AI / forward-deployed engineer</div>
-  ${navTabs('/jobs')}
-</header>
-
-${jobsViewToggle('day')}
 ${dayNav('/jobs', tz, { current, newer, older })}
 <div class="stat-row"><span><strong>${dayItems.length}</strong> postings</span><span><strong>${companyCount}</strong> companies</span><span><strong>${goodFit}</strong> good fit</span><span><strong>${applied}</strong> applied</span></div>
-${dayItems.map((j) => jobItemRow(j, true)).join('')}
+${companies.map((c) => companyAccordion(c, byCompany.get(c))).join('')}
 ${archiveStrip('/jobs', days, current)}
 
-<footer>Send <code>jobs</code> in WhatsApp to poll now, or <code>jobs sources</code> to see every company watched.</footer>`;
+<footer>Click a company to expand it. Send <code>jobs</code> in WhatsApp to poll now, or <code>jobs sources</code> to see every company watched.</footer>`;
   return page(body, `Jobs — ${dayLabel(current, tz)}`);
 }

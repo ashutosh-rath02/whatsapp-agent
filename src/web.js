@@ -20,7 +20,7 @@ import {
   dbPath,
 } from './store.js';
 import { relTime, fmtAbsolute, escapeHtml } from './format.js';
-import { page, navTabs, jobStatusBadge, jobStatusActions } from './webTheme.js';
+import { page, navTabs, jobStatusBadge, jobStatusActions, sortByStatus } from './webTheme.js';
 import { renderNewsPage, renderJobsPage } from './webPages.js';
 
 function safeEqual(a, b) {
@@ -103,7 +103,7 @@ export function renderDashboard() {
   const tz = config.agent.timezone;
   const items = listItems(500);
   const rem = pendingReminders(500);
-  const jobs = recentJobs(100);
+  const jobs = sortByStatus(recentJobs(100));
 
   const remSection = rem.length
     ? rem.map((r) => reminderCard(r, tz)).join('')

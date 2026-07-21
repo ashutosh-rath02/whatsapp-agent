@@ -27,7 +27,6 @@ nav.tabs{margin-top:10px;font-size:12px;text-transform:uppercase;letter-spacing:
 nav.tabs a{color:var(--faint);text-decoration:none;padding-bottom:2px;}
 nav.tabs a.active{color:var(--ink);border-bottom:2px solid var(--accent);font-weight:bold;}
 nav.tabs .sep{color:var(--rule);margin:0 10px;}
-nav.tabs.sub-toggle{margin:16px 0 4px;font-size:11px;}
 h2{font-size:14px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--rule);
   padding-bottom:4px;margin:28px 0 10px;}
 h3.section{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);
@@ -176,6 +175,14 @@ export function jobStatusActions(j) {
   if (j.status !== 'not_applicable') buttons.push(btn('not_applicable', 'not applicable'));
   if (j.status && j.status !== 'open') buttons.push(btn('open', 'reset'));
   return `<div class="actions">${buttons.join('')}</div>`;
+}
+
+// Untriaged (open) postings sort above ones already marked applied / not
+// applicable, so a list leads with what still needs a decision instead of
+// mixing in stuff you've already dealt with.
+export function sortByStatus(jobs) {
+  const rank = (j) => (!j.status || j.status === 'open' ? 0 : 1);
+  return jobs.slice().sort((a, b) => rank(a) - rank(b));
 }
 
 export function navTabs(active) {

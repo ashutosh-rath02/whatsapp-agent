@@ -32,8 +32,6 @@ expect(!renderNewsPage({}).includes('undefined'), 'news page empty state has no 
 expect(renderNewsPage({}).includes('No digests'), 'news page shows empty-state copy');
 expect(!renderJobsPage({}).includes('undefined'), 'jobs page empty state has no "undefined"');
 expect(renderJobsPage({}).includes('No matches'), 'jobs page shows empty-state copy');
-expect(!renderJobsPage({ view: 'company' }).includes('undefined'), 'jobs company-view empty state has no "undefined"');
-expect(renderJobsPage({ view: 'company' }).includes('No matches'), 'jobs company-view shows the same empty-state copy before any data exists');
 
 console.log('\n— theme —');
 expect(CSS.includes('prefers-color-scheme: dark'), 'dark-mode variant present');
@@ -166,28 +164,55 @@ expect(jobsCapped.includes('<strong>251</strong> postings'), 'stat-row shows the
 expect((jobsCapped.match(/CapCo\d+/g) || []).length === 250, 'every one of the 250 companies actually renders — no render cap');
 expect(!jobsCapped.includes('more from this day'), 'no "hidden, capped" overflow notice — there is nothing left out to report');
 
-console.log('\n— jobs page: by-company view (accordion) —');
+console.log('\n— jobs page: day view groups postings into company accordions —');
 {
-  const html = renderJobsPage({ view: 'company' });
+  const html = renderJobsPage({});
   expect(html.includes('<details class="company">'), 'renders native <details> accordions (no JS needed)');
   expect(html.includes('<summary>'), 'each company has a <summary> click target');
   expect(html.includes('Acme'), 'shows a company from "today"');
-  expect(html.includes('Beta Inc'), 'ALSO shows a company from "yesterday" — this view spans every day, not just one');
-  expect(html.includes('🏢 By company') && html.includes('class="active"'), 'toggle nav marks "By company" as the active view');
-  expect(html.includes('📅 By day'), 'toggle nav still links back to the day view');
-  expect(!html.includes('<div class="daynav">'), 'no day prev/next nav in company view — it is not day-scoped (CSS class definition alone doesn\'t count, only checking for the element)');
+  expect(!html.includes('Beta Inc'), 'does NOT show yesterday\'s company — the accordion grouping is still day-scoped, only one day at a time');
+  expect(html.includes('<div class="daynav">'), 'day prev/next nav is still present — there is only one view now, and it is day-scoped');
 }
 
-console.log('\n— jobs page: by-company view shows every role for a heavy company —');
+console.log('\n— jobs page: a heavy company inside a day still shows every role —');
 store.addJobs(Array.from({ length: 40 }, (_, i) => ({
   key: `bigco${i}`, company: 'BigCo', title: `Role ${i}`, url: `https://example.com/bigco${i}`, location: '', fit: 'Good fit',
 })));
 store.markJobsDelivered(Array.from({ length: 40 }, (_, i) => `bigco${i}`));
 {
-  const html = renderJobsPage({ view: 'company' });
+  const html = renderJobsPage({});
   expect(html.includes('40 roles'), 'accordion header shows the true total for that company (40)');
   expect((html.match(/Role \d+/g) || []).length === 40, 'all 40 roles actually render inside the accordion — no per-company cap');
   expect(!html.includes('more from BigCo'), 'no overflow notice — nothing was left out');
+}
+
+console.log('\n— jobs page: untriaged roles sort above already-triaged ones within a company —');
+store.addJobs([
+  { key: 'ord-a', company: 'OrderCo', title: 'Role A (will be applied)', url: 'https://example.com/ord-a', location: '', fit: 'Good fit' },
+  { key: 'ord-b', company: 'OrderCo', title: 'Role B (stays open)', url: 'https://example.com/ord-b', location: '', fit: 'Good fit' },
+  { key: 'ord-c', company: 'OrderCo', title: 'Role C (not applicable)', url: 'https://example.com/ord-c', location: '', fit: 'Good fit' },
+]);
+store.markJobsDelivered(['ord-a', 'ord-b', 'ord-c']);
+{
+  const ordJobs = store.recentJobs(2000).filter((j) => j.company === 'OrderCo');
+  const ordA = ordJobs.find((j) => j.title.startsWith('Role A'));
+  const ordC = ordJobs.find((j) => j.title.startsWith('Role C'));
+  store.setJobStatus(ordA.id, 'applied');
+  store.setJobStatus(ordC.id, 'not_applicable');
+
+  const html = renderJobsPage({});
+  expect(html.includes('3 roles · 1 open'), 'accordion count reflects only 1 of 3 still open');
+  const from = html.indexOf('OrderCo');
+  const bIdx = html.indexOf('Role B', from);
+  const aIdx = html.indexOf('Role A', from);
+  const cIdx = html.indexOf('Role C', from);
+  expect(bIdx > -1 && aIdx > -1 && cIdx > -1 && bIdx < aIdx && bIdx < cIdx, 'still-open "Role B" renders above the applied and not-applicable roles, not in original add order');
+
+  const dash = renderDashboard();
+  const dbIdx = dash.indexOf('Role B');
+  const daIdx = dash.indexOf('Role A');
+  const dcIdx = dash.indexOf('Role C');
+  expect(dbIdx > -1 && daIdx > -1 && dcIdx > -1 && dbIdx < daIdx && dbIdx < dcIdx, 'homepage "Recent jobs" list applies the same sort — still-open roles above applied/not-applicable ones');
 }
 
 console.log('\n— dashboard still renders with all data present —');
