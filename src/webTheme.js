@@ -1,7 +1,8 @@
 // Shared look for every dashboard page (/, /news, /jobs): an "old-school
 // newspaper" theme — Georgia serif, warm paper background, double-rule
 // mastheads and datelines — with a dark-mode variant via CSS custom
-// properties. No JS anywhere; a page auto-refreshes every 60s instead.
+// properties. Almost no JS; a page auto-refreshes every 60s. The one
+// exception is STATUS_SCRIPT below, for the job-status triage buttons.
 export const CSS = `
 :root{
   --ink:#1a1a1a;--rule:#cfc8b8;--paper:#f6f3ea;--card:#fffdf7;--link:#0b3d91;--faint:#857c63;
@@ -90,6 +91,57 @@ code{background:#efe9da;padding:1px 5px;font-size:13px;border-radius:2px;}
 @media (prefers-color-scheme: dark){code{background:#2a2619;}}
 `;
 
+// Progressive enhancement, only for the job-status buttons: a plain <form
+// POST still works with JS off (full reload, same as before) — this just
+// intercepts the submit, does the POST in the background, and updates the
+// one card in place, so triaging a long list doesn't reload the whole page
+// on every click. Everything else on this dashboard stays server-rendered
+// with no JS involved, per the original design.
+export const STATUS_SCRIPT = `
+(function () {
+  if (!window.fetch) return; // no fetch -> forms just submit normally, unaffected
+  function actionsHtml(id, status) {
+    var out = '';
+    if (status !== 'applied') out += '<form method="post" action="/jobs/' + id + '/applied"><button>applied</button></form>';
+    if (status !== 'not_applicable') out += '<form method="post" action="/jobs/' + id + '/skip"><button>not applicable</button></form>';
+    if (status && status !== 'open') out += '<form method="post" action="/jobs/' + id + '/open"><button>reset</button></form>';
+    return out;
+  }
+  function badgeHtml(status) {
+    if (status === 'applied') return '<span class="tag applied">applied</span>';
+    if (status === 'not_applicable') return '<span class="tag skipped">not applicable</span>';
+    return '';
+  }
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    var m = form.action && form.action.match(/\\/jobs\\/(\\d+)\\/(applied|skip|open)$/);
+    if (!m) return; // not one of ours (e.g. done/cancel on items/reminders) -> normal submit
+    var card = form.closest('.card');
+    if (!card) return;
+    e.preventDefault();
+    var id = m[1];
+    var status = m[2] === 'applied' ? 'applied' : m[2] === 'skip' ? 'not_applicable' : 'open';
+    fetch(form.action, { method: 'POST' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('bad status ' + res.status);
+        card.classList.toggle('skipped', status === 'not_applicable');
+        var actions = card.querySelector('.actions');
+        if (actions) actions.innerHTML = actionsHtml(id, status);
+        var badges = card.querySelector('.badges');
+        if (badges) {
+          var old = badges.querySelector('.tag.applied, .tag.skipped');
+          if (old) old.remove();
+          var badge = badgeHtml(status);
+          if (badge) badges.insertAdjacentHTML('afterbegin', badge);
+        }
+      })
+      .catch(function () {
+        form.submit(); // fetch failed for any reason -> fall back to a real page load
+      });
+  });
+})();
+`;
+
 export function page(body, title = 'whatsapp-agent') {
   return `<!doctype html><html lang="en"><head>
 <meta charset="utf-8">
@@ -97,7 +149,9 @@ export function page(body, title = 'whatsapp-agent') {
 <meta http-equiv="refresh" content="60">
 <title>${title}</title>
 <style>${CSS}</style></head>
-<body>${body}</body></html>`;
+<body>${body}
+<script>${STATUS_SCRIPT}</script>
+</body></html>`;
 }
 
 // Shared between web.js's homepage card and webPages.js's /jobs day-browse

@@ -1,6 +1,7 @@
 // A tiny, dependency-free web dashboard (Node's built-in http) showing your
 // saved items and pending reminders. Deliberately plain / old-school: server
-// rendered HTML, a sprinkle of CSS, no JavaScript.
+// rendered HTML, a sprinkle of CSS, and one small scoped script for the job
+// status buttons (see webTheme.js's STATUS_SCRIPT) — everything else is JS-free.
 //
 // Security: if WEB_PASSWORD is set, the server binds to all interfaces and
 // requires HTTP Basic auth. If it's NOT set, it binds to loopback only
@@ -89,9 +90,9 @@ function itemCard(i, tz) {
 function jobCard(j, tz) {
   const fitClass = j.fit === 'Good fit' ? 'good' : 'stretch';
   const cardClass = j.status === 'not_applicable' ? ' skipped' : '';
-  return `<div class="card${cardClass}">
+  return `<div class="card${cardClass}" data-job-id="${j.id}">
   <div class="row"><span class="id">${escapeHtml(j.company)}</span>
-    <span>${jobStatusBadge(j.status)}<span class="tag ${fitClass}">${escapeHtml(j.fit)}</span></span></div>
+    <span class="badges">${jobStatusBadge(j.status)}<span class="tag ${fitClass}">${escapeHtml(j.fit)}</span></span></div>
   <div class="body"><a href="${escapeHtml(j.url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(j.title)}</a></div>
   <div class="meta">${escapeHtml(j.location || '')}${j.location ? ' · ' : ''}${escapeHtml(fmtAbsolute(j.deliveredAt, tz))}</div>
   ${jobStatusActions(j)}

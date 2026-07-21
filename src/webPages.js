@@ -128,9 +128,9 @@ ${archiveStrip('/news', days, current)}
 function jobItemRow(j, showCompany = true) {
   const fitClass = j.fit === 'Good fit' ? 'good' : 'stretch';
   const cardClass = j.status === 'not_applicable' ? ' skipped' : '';
-  return `<div class="card${cardClass}">
+  return `<div class="card${cardClass}" data-job-id="${j.id}">
   <div class="row"><span class="id">${showCompany ? escapeHtml(j.company) : ' '}</span>
-    <span>${jobStatusBadge(j.status)}<span class="tag ${fitClass}">${escapeHtml(j.fit)}</span></span></div>
+    <span class="badges">${jobStatusBadge(j.status)}<span class="tag ${fitClass}">${escapeHtml(j.fit)}</span></span></div>
   <div class="body"><a href="${escapeHtml(j.url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(j.title)}</a></div>
   ${j.location ? `<div class="meta">${escapeHtml(j.location)}</div>` : ''}
   ${jobStatusActions(j)}
@@ -156,23 +156,19 @@ ${jobsViewToggle(view)}
 }
 
 function companyAccordion(company, jobs) {
-  const CAP = 30;
   const openCount = jobs.filter((j) => j.status === 'open').length;
-  const shown = jobs.slice(0, CAP);
-  const overflow = jobs.length - shown.length;
   const countLabel = `${jobs.length} role${jobs.length === 1 ? '' : 's'}${openCount < jobs.length ? ` · ${openCount} open` : ''}`;
   return `<details class="company">
   <summary><span class="company-name">${escapeHtml(company)}</span><span class="tag">${countLabel}</span></summary>
   <div class="company-body">
-    ${shown.map((j) => jobItemRow(j, false)).join('')}
-    ${overflow > 0 ? `<div class="empty">+${overflow} more from ${escapeHtml(company)} — narrowed to the most recent ${CAP}.</div>` : ''}
+    ${jobs.map((j) => jobItemRow(j, false)).join('')}
   </div>
 </details>`;
 }
 
 function renderJobsByCompany() {
   const tz = config.agent.timezone;
-  const all = recentJobs(5000); // across every day, not just one — the whole point of this view
+  const all = recentJobs(6000); // matches store.js's own max retention — this view shows everything the store still holds
   if (!all.length) return jobsEmptyPage('company');
 
   const byCompany = new Map();
@@ -183,9 +179,6 @@ function renderJobsByCompany() {
   for (const list of byCompany.values()) list.sort((a, b) => b.deliveredAt - a.deliveredAt);
 
   const companies = [...byCompany.keys()].sort((a, b) => a.localeCompare(b));
-  const COMPANY_CAP = 150;
-  const shownCompanies = companies.slice(0, COMPANY_CAP);
-  const companyOverflow = companies.length - shownCompanies.length;
 
   const body = `
 <header>
@@ -196,8 +189,7 @@ function renderJobsByCompany() {
 
 ${jobsViewToggle('company')}
 <div class="stat-row"><span><strong>${all.length}</strong> postings</span><span><strong>${companies.length}</strong> companies</span></div>
-${shownCompanies.map((c) => companyAccordion(c, byCompany.get(c))).join('')}
-${companyOverflow > 0 ? `<div class="empty">+${companyOverflow} more companies not shown.</div>` : ''}
+${companies.map((c) => companyAccordion(c, byCompany.get(c))).join('')}
 
 <footer>Click a company to expand it. Send <code>jobs</code> in WhatsApp to poll now, or <code>jobs sources</code> to see every company watched.</footer>`;
   return page(body, 'Jobs by company — whatsapp-agent');
@@ -207,7 +199,7 @@ export function renderJobsPage(query) {
   if (query.view === 'company') return renderJobsByCompany();
 
   const tz = config.agent.timezone;
-  const all = recentJobs(3000);
+  const all = recentJobs(6000); // matches store.js's own max retention — no hidden cap on how far back you can page
   const byDay = groupByDay(all, 'deliveredAt', tz);
   const days = [...byDay.keys()];
 
@@ -219,13 +211,6 @@ export function renderJobsPage(query) {
   const goodFit = dayItems.filter((j) => j.fit === 'Good fit').length;
   const applied = dayItems.filter((j) => j.status === 'applied').length;
 
-  // A day can hold hundreds of postings (a re-seed, or a big multi-city
-  // posting spree from one company) — cap what actually renders so the
-  // page stays a normal size, same philosophy as the WhatsApp message cap.
-  const RENDER_CAP = 200;
-  const items = dayItems.slice(0, RENDER_CAP);
-  const overflow = dayItems.length - items.length;
-
   const body = `
 <header>
   <h1><a href="/">🗒️ whatsapp-agent</a></h1>
@@ -236,8 +221,7 @@ export function renderJobsPage(query) {
 ${jobsViewToggle('day')}
 ${dayNav('/jobs', tz, { current, newer, older })}
 <div class="stat-row"><span><strong>${dayItems.length}</strong> postings</span><span><strong>${companyCount}</strong> companies</span><span><strong>${goodFit}</strong> good fit</span><span><strong>${applied}</strong> applied</span></div>
-${items.map((j) => jobItemRow(j, true)).join('')}
-${overflow > 0 ? `<div class="empty">+${overflow} more from this day — narrowed to the first ${RENDER_CAP}, alphabetical by company.</div>` : ''}
+${dayItems.map((j) => jobItemRow(j, true)).join('')}
 ${archiveStrip('/jobs', days, current)}
 
 <footer>Send <code>jobs</code> in WhatsApp to poll now, or <code>jobs sources</code> to see every company watched.</footer>`;

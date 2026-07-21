@@ -11,7 +11,7 @@ process.env.AGENT_TZ = process.env.AGENT_TZ || 'Asia/Kolkata';
 
 const { renderDashboard } = await import('../src/web.js');
 const { renderNewsPage, renderJobsPage } = await import('../src/webPages.js');
-const { CSS } = await import('../src/webTheme.js');
+const { CSS, STATUS_SCRIPT, page } = await import('../src/webTheme.js');
 const store = await import('../src/store.js');
 
 let failures = 0;
@@ -19,6 +19,13 @@ const expect = (cond, what) => {
   console.log(`  ${cond ? '✓' : '✗ FAILED:'} ${what}`);
   if (!cond) failures++;
 };
+
+// STATUS_SCRIPT (embedded on every page, see webTheme.js) legitimately
+// contains the literal markup strings it builds client-side — 'tag applied',
+// 'tag skipped', etc. — so a whole-page substring check for "is this badge
+// absent" would false-positive on the script's own source. It's always
+// appended after all card content, so strip it before checking for absence.
+const renderedOnly = (html) => html.split('<script>')[0];
 
 console.log('— empty states (no data yet) —');
 expect(!renderNewsPage({}).includes('undefined'), 'news page empty state has no "undefined"');
@@ -31,6 +38,18 @@ expect(renderJobsPage({ view: 'company' }).includes('No matches'), 'jobs company
 console.log('\n— theme —');
 expect(CSS.includes('prefers-color-scheme: dark'), 'dark-mode variant present');
 expect(CSS.includes('--good') && CSS.includes('--stretch'), 'fit-tag accent colors defined');
+
+console.log('\n— status-button script (progressive enhancement, avoids full reload on click) —');
+{
+  const html = page('<div>x</div>');
+  expect(html.includes('<script>') && html.includes(STATUS_SCRIPT.trim().slice(0, 30)), 'script is actually embedded in every rendered page');
+  expect(STATUS_SCRIPT.includes('e.preventDefault()'), 'intercepts the form submit rather than letting it navigate');
+  expect(STATUS_SCRIPT.includes("fetch(form.action"), 'submits the status change via fetch in the background');
+  expect(STATUS_SCRIPT.includes('form.submit()'), 'falls back to a real page submit if fetch fails — never silently does nothing');
+  expect(STATUS_SCRIPT.includes('if (!window.fetch) return'), 'no-op (plain form submit) on browsers without fetch, rather than erroring');
+  expect(STATUS_SCRIPT.includes("card.classList.toggle('skipped'"), 'toggles the dimming class in place on success');
+  expect(/\.actions/.test(STATUS_SCRIPT) && /\.badges/.test(STATUS_SCRIPT), 'updates both the button row and the badge in place');
+}
 
 console.log('\n— seed 2 days of news + jobs —');
 const DAY_MS = 86_400_000;
@@ -97,7 +116,7 @@ const j1id = store.recentJobs(500).find((j) => j.company.includes('Acme')).id;
   expect(html.includes(`/jobs/${j1id}/applied`), 'open job offers an "applied" action');
   expect(html.includes(`/jobs/${j1id}/skip`), 'open job offers a "not applicable" action');
   expect(!html.includes(`/jobs/${j1id}/open`), 'open job does not offer a redundant "reset to open" action');
-  expect(!html.includes('tag applied') && !html.includes('tag skipped'), 'no status badge shown while still open');
+  expect(!renderedOnly(html).includes('tag applied') && !renderedOnly(html).includes('tag skipped'), 'no status badge shown while still open');
 }
 
 console.log('\n— job status: applied —');
@@ -111,6 +130,7 @@ store.setJobStatus(j1id, 'applied');
   expect(html.includes(`/jobs/${j1id}/skip`), 'still offers "not applicable" as an alternative');
   expect(html.includes(`/jobs/${j1id}/open`), 'now offers "reset" back to open');
   expect(!html.includes('card skipped'), 'applied card is not visually dimmed (dimming is only for not_applicable)');
+  expect(html.includes(`data-job-id="${j1id}"`) && html.includes('class="badges"'), 'card carries the hooks the status script needs (data-job-id, .badges) to update it without a reload');
 }
 
 console.log('\n— job status: not applicable (dims the card) —');
@@ -127,7 +147,7 @@ console.log('\n— job status: reset back to open —');
 store.setJobStatus(j1id, 'open');
 {
   const html = renderJobsPage({});
-  expect(!html.includes('tag applied') && !html.includes('tag skipped'), 'badge cleared after reset');
+  expect(!renderedOnly(html).includes('tag applied') && !renderedOnly(html).includes('tag skipped'), 'badge cleared after reset');
   expect(!html.includes('card skipped'), 'dimming cleared after reset');
 }
 
@@ -136,15 +156,15 @@ const jobsYesterday = renderJobsPage({ day: yKey });
 expect(jobsYesterday.includes('Beta Inc'), 'navigating to ?day=<yesterday> shows that posting');
 expect(jobsYesterday.includes('tag stretch'), 'Stretch renders with the stretch class');
 
-console.log('\n— jobs page: render cap on a heavy day —');
+console.log('\n— jobs page: a heavy day renders everything, nothing hidden —');
 store.addJobs(Array.from({ length: 250 }, (_, i) => ({
   key: `cap${i}`, company: `CapCo${i}`, title: 'Software Engineer', url: `https://example.com/cap${i}`, location: '', fit: 'Good fit',
 })));
 store.markJobsDelivered(Array.from({ length: 250 }, (_, i) => `cap${i}`));
 const jobsCapped = renderJobsPage({});
-expect(jobsCapped.includes('<strong>251</strong> postings'), 'stat-row shows the true uncapped total (1 existing + 250 new = 251)');
-expect((jobsCapped.match(/CapCo\d+/g) || []).length <= 200, 'rendered card count stays within the cap');
-expect(jobsCapped.includes('more from this day'), 'overflow notice shown when a day exceeds the cap');
+expect(jobsCapped.includes('<strong>251</strong> postings'), 'stat-row shows the true total (1 existing + 250 new = 251)');
+expect((jobsCapped.match(/CapCo\d+/g) || []).length === 250, 'every one of the 250 companies actually renders — no render cap');
+expect(!jobsCapped.includes('more from this day'), 'no "hidden, capped" overflow notice — there is nothing left out to report');
 
 console.log('\n— jobs page: by-company view (accordion) —');
 {
@@ -158,7 +178,7 @@ console.log('\n— jobs page: by-company view (accordion) —');
   expect(!html.includes('<div class="daynav">'), 'no day prev/next nav in company view — it is not day-scoped (CSS class definition alone doesn\'t count, only checking for the element)');
 }
 
-console.log('\n— jobs page: by-company view per-company cap —');
+console.log('\n— jobs page: by-company view shows every role for a heavy company —');
 store.addJobs(Array.from({ length: 40 }, (_, i) => ({
   key: `bigco${i}`, company: 'BigCo', title: `Role ${i}`, url: `https://example.com/bigco${i}`, location: '', fit: 'Good fit',
 })));
@@ -166,8 +186,8 @@ store.markJobsDelivered(Array.from({ length: 40 }, (_, i) => `bigco${i}`));
 {
   const html = renderJobsPage({ view: 'company' });
   expect(html.includes('40 roles'), 'accordion header shows the true total for that company (40)');
-  expect((html.match(/Role \d+/g) || []).length <= 30, 'rendered roles for one company stay within the per-company cap (30)');
-  expect(html.includes('more from BigCo'), 'overflow notice names the specific company it was capped for');
+  expect((html.match(/Role \d+/g) || []).length === 40, 'all 40 roles actually render inside the accordion — no per-company cap');
+  expect(!html.includes('more from BigCo'), 'no overflow notice — nothing was left out');
 }
 
 console.log('\n— dashboard still renders with all data present —');

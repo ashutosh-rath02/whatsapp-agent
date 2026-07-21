@@ -90,14 +90,20 @@ demand; an item is only ever reported once.
 
 ## Dashboard
 
-A plain, no-JS web app — same "old-school newspaper" theme throughout
-(Georgia serif, warm paper, dark-mode aware), three pages:
+Server-rendered, same "old-school newspaper" theme throughout (Georgia
+serif, warm paper, dark-mode aware), three pages. Almost the whole thing
+is still plain HTML with no JS — the one exception is noted below.
 
 | Page | Shows |
 |------|-------|
 | `/` | saved items + pending reminders + recent jobs, one-click **done** / **cancel** |
 | `/news` | AI digest browsable **by day**, grouped into the same tiers as the WhatsApp digest, with prev/next-day nav and a recent-editions strip |
 | `/jobs` | delivered job postings, two views — **by day** or **by company** |
+
+Nothing is hidden or capped on these pages — a heavy day or a company with
+dozens of roles renders in full, not just the first N (the WhatsApp
+message itself still caps what it sends in one go, since a chat message
+has a real length limit a web page doesn't).
 
 `/jobs` has a toggle at the top: **📅 By day** (default — one day at a
 time, prev/next nav) or **🏢 By company** (every company that's ever
@@ -111,6 +117,11 @@ accordions. A posting marked *not applicable* stays visible but visually
 dimmed rather than disappearing, so a misclick is always reversible.
 Status is purely for your own tracking — it never affects delivery or
 dedup, so marking something doesn't change what the agent sends you.
+Clicking a triage button updates that one card in place via a small
+scoped `<script>` (`webTheme.js`'s `STATUS_SCRIPT`) — no full-page reload.
+It's the only JS on the dashboard, and it degrades gracefully: with JS off,
+or if the background request fails, the same button is a plain HTML form
+that falls back to a normal POST + page reload.
 
 ```
 http://<your-server-ip>:8080
