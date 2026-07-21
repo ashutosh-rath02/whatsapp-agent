@@ -45,19 +45,38 @@ your self-chat — they fire even after a redeploy.
 
 ## Notifications
 
-WhatsApp doesn't push a phone notification for messages sent to your
-self-chat from a linked device (this bot's own session) — as far as the
-phone is concerned, a message you "sent yourself" from another device
-doesn't need alerting, even though the content is new. Self-chat still
-works fine for typing commands (you're already looking at your phone when
-you do that), but reminders, job matches, and the morning digest can go
-unnoticed for hours.
+WhatsApp doesn't push a phone notification for messages sent by a linked
+device under your own account — confirmed to apply to **self-chat and
+groups alike**, since it's about who sent the message, not which chat it
+landed in. Nothing inside WhatsApp can route around that; it's a property
+of the account, not the chat. Typing commands is unaffected (you're already
+looking at your phone when you do that) — the problem is only the
+unsolicited sends: reminders, job matches, the morning digest.
 
-**Fix: send `here` in a WhatsApp group with just you in it** (create a
-group, add anyone to make it, then remove them). Group messages notify
-normally, including from a linked-device bot. From then on, reminders/jobs/
-news go to that group instead of self-chat; commands still work from
-self-chat as before. Send `here` again from self-chat to switch back.
+**Fix: real phone push via [ntfy.sh](https://ntfy.sh)** — free, no account,
+a channel entirely outside WhatsApp so its notification rules don't apply.
+Setup:
+1. Install the **ntfy** app ([Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy) / [iOS](https://apps.apple.com/us/app/ntfy/id1625396347)).
+2. In the app, subscribe to a topic — pick something unguessable (ntfy
+   topics are public unless self-hosted, so this is your only access
+   control): e.g. `whatsapp-agent-yourname-a8f3k2`.
+3. Set `NTFY_TOPIC=whatsapp-agent-yourname-a8f3k2` in `.env` and restart.
+
+From then on, every reminder, job match, and daily digest sends a short
+push ("💼 3 new India posting(s)") alongside the full WhatsApp message —
+WhatsApp still has the complete content and history, ntfy's only job is
+making your phone buzz so you notice. `NTFY_SERVER` can point at a
+self-hosted ntfy instance instead of the public one; leaving `NTFY_TOPIC`
+empty disables push entirely (default).
+
+### `here` — organizing where content lands (does *not* fix notifications)
+
+`here`, sent in a WhatsApp group with just you in it, redirects reminders/
+jobs/news there instead of self-chat, and `here` again in self-chat reverts.
+Useful if you'd rather keep that content separate from your self-chat notes
+— **but it does not solve the notification problem**, since group messages
+from a linked device are suppressed exactly the same way self-chat ones
+are. Use ntfy above for that.
 
 For safety, `here` only registers a group if you're the only member —
 if anyone else is in it, it refuses and tells you why, since everything
@@ -146,6 +165,8 @@ return JSON. Day navigation on `/news` and `/jobs` is a plain link
 | `WHISPER_MODEL` | `whisper-1` | Transcription model |
 | `MIN_TEXT_LENGTH` | `12` | Min length for a no-link note to trigger |
 | `DEBUG` | `false` | Verbose logging |
+| `NTFY_TOPIC` | — | Real phone push for reminders/jobs/news (see **Notifications**); empty = off |
+| `NTFY_SERVER` | `https://ntfy.sh` | ntfy server — override to self-host |
 | `JOBS_ENABLED` | `true` | Job-watch: poll company ATS boards, message new matches |
 | `JOBS_POLL_MS` | `1500000` (25 min) | How often to poll every company (min 5 min) |
 | `JOBS_MAX_PER_MESSAGE` | `40` | Cap postings shown per message (rest still marked delivered) |
@@ -170,7 +191,8 @@ src/
   feeds.js       dependency-free RSS/Atom item extraction
   jobs.js        job-watch engine: poll companies → filter → dedupe → real-time delivery
   jobSources.js  loads data/*.csv into pollable company targets
-  jobRelevance.js title-based role filter (SWE/full-stack/backend/frontend/AI/FDE) + fit tag
+  jobRelevance.js title-based role filter (SWE/full-stack/backend/frontend/AI/FDE) + fit tag + India-only location filter
+  push.js        real phone push via ntfy.sh — outside WhatsApp entirely, see Notifications
   csv.js         dependency-free CSV parser (data/*.csv have quoted/commaful fields)
   ats/           one adapter per ATS platform (see docs/JOBS.md)
     index.js       dispatches to the right adapter by company.ats
@@ -196,6 +218,7 @@ scripts/
   jobs-live.js       poll every company for real + print the message (--seed to init)
   web-smoke.js       offline tests for /, /news, /jobs: day nav, XSS escaping, empty states
   here-smoke.js      offline tests for `here`: solo-group registration, other-member refusal
+  push-smoke.js      offline tests for ntfy push: disabled-by-default, header sanitization, never throws
 ```
 
 ## Job watch

@@ -136,6 +136,7 @@ reel-audio transcription.
 | `NEWS_LLM_PICKS`, `NEWS_MAX_ITEMS` | LLM top-picks section; digest length cap |
 | `JOBS_ENABLED`, `JOBS_POLL_MS` | job-watch on/off and poll interval (default 25 min) |
 | `JOBS_MAX_PER_MESSAGE` | cap postings shown per message (default 40) |
+| `NTFY_TOPIC`, `NTFY_SERVER` | real phone push for reminders/jobs/news — WhatsApp suppresses self-sent notifications regardless of chat, this is a channel outside it; empty topic = off |
 | `AGENT_TZ` | timezone for showing reminder/saved times (box is UTC) |
 | `WEB_ENABLED`, `WEB_PORT` | dashboard on/off and port (default 8080) |
 | `WEB_USER`, `WEB_PASSWORD` | dashboard auth; no password ⇒ localhost-only |

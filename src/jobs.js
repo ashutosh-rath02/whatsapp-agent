@@ -8,6 +8,7 @@ import { loadCompanies } from './jobSources.js';
 import { fetchJobs } from './ats/index.js';
 import { isRelevant, fitFor, isIndiaLocation } from './jobRelevance.js';
 import { addJobs, pendingJobs, markJobsDelivered, reload } from './store.js';
+import { sendPush } from './push.js';
 import { trunc } from './format.js';
 
 function hash(s = '') {
@@ -81,7 +82,7 @@ export function buildJobsMessage() {
   }
   const skipped = pending.length - shown.length;
   if (skipped > 0) lines.push(`_+${skipped} more this cycle — check the dashboard or \`jobs\` again later._`);
-  return { text: lines.join('\n').trim(), keys: pending.map((j) => j.key) };
+  return { text: lines.join('\n').trim(), keys: pending.map((j) => j.key), count: pending.length };
 }
 
 /** Collect + build + mark. Shared by the scheduler and the `jobs` command. */
@@ -89,7 +90,7 @@ export async function runJobsCycle() {
   await collectJobs();
   const msg = buildJobsMessage();
   if (!msg) return null;
-  return { text: msg.text, commit: () => markJobsDelivered(msg.keys) };
+  return { text: msg.text, count: msg.count, commit: () => markJobsDelivered(msg.keys) };
 }
 
 export function startJobsScheduler(client, getNotifyTarget) {
@@ -111,6 +112,7 @@ export function startJobsScheduler(client, getNotifyTarget) {
           } else {
             await client.sendMessage(chatId, `${config.agent.replyMarker}\n\n${cycle.text}`);
             cycle.commit();
+            await sendPush('Job Matches', `${cycle.count} new India posting(s) — open WhatsApp for details`, { tags: ['briefcase'], priority: 4 });
             log.info('💼 delivered new job posting(s)');
           }
         }

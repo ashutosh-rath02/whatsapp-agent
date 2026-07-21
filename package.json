@@ -17,6 +17,7 @@
     "smoke:jobs": "node scripts/jobs-smoke.js",
     "smoke:web": "node scripts/web-smoke.js",
     "smoke:here": "node scripts/here-smoke.js",
+    "smoke:push": "node scripts/push-smoke.js",
     "jobs:live": "node scripts/jobs-live.js",
     "jobs:seed": "node scripts/jobs-live.js --seed"
   },
