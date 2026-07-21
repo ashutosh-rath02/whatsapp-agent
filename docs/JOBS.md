@@ -296,6 +296,38 @@ segment this was built for. Picking up more is additive: add a row to
 `data/companies.csv` with a working `ats`/`career_url`, no code change
 needed.
 
+### Phase 2b — bulk resolution rerun (2026-07-21)
+
+Reran the same slug-guessing approach as a standalone, re-runnable tool
+(`scripts/resolve-ats.js`) against the still-unresolved 452 + 196 rows,
+this time reusing the real `src/ats/*` adapters directly (so resolution
+and the live poller always agree on how a board parses) and gating every
+match on **at least one actual India-located posting** — the same
+`isIndiaLocation()` check the live poller applies — not just a slug that
+happens to 200. Also found and fixed a bug the first pass didn't hit:
+**SmartRecruiters' postings endpoint returns 200 with `totalFound:0` for
+literally any slug, even garbage ones** — it never 404s, so a 0-job
+SmartRecruiters response is not evidence of anything and is now always
+rejected outright (`requiresJobs`), unlike Greenhouse/Lever/Ashby/Workable
+where a real 0-job board is legitimate signal a slug exists.
+
+Even with the India-location gate, hand-verified all 20 raw hits against
+actual returned job titles/locations (same discipline as the Phase 1
+low-confidence review) and caught one more of the "wrong company, same
+word" collisions the gate can't catch on its own: **`Applied Materials`
+→ `ashby/applied`** is actually Applied Intuition (self-driving, Sunnyvale
+HQ) — coincidentally has exactly one Bangalore posting, just enough to
+clear the gate. Reverted. Also re-caught **BarRaiser → `lever/barraiser`**
+-- the exact staffing-agency board already identified and excluded in the
+Phase 1 pass above -- confirming the CSV's `needs-resolution` reset had no
+memory of that exclusion; re-reverted, this time with a note in the
+`Applied? / Notes` column so a future rerun doesn't repeat it (Porter's
+row already carried an equivalent note in `companies.csv`; funded-startups
+rows didn't have that habit yet).
+
+Net: **123 → 137 pollable companies**, including real hires-in-India
+signal like Groww, Airbnb India, Sarvam AI, Zeta, Turing.com India Hub.
+
 ### Phase 3 (stretch, not done)
 
 Hand-picked scraping for a handful of true-custom high-priority companies

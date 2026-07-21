@@ -36,3 +36,14 @@ export function parseCsv(text) {
     return obj;
   });
 }
+
+/** Inverse of parseCsv: row objects + an explicit column order back to RFC4180 text. */
+export function stringifyCsv(rows, header) {
+  const esc = (v) => {
+    const s = String(v ?? '');
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [header.map(esc).join(',')];
+  for (const row of rows) lines.push(header.map((h) => esc(row[h])).join(','));
+  return lines.join('\n') + '\n';
+}

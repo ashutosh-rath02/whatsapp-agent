@@ -8,7 +8,7 @@ S.No,Startup,City,Funding Raised (reported),Stage,Key Investors,Source,Hiring Si
 7,Upliance,Bengaluru,$5.3M,Early Stage,"Rainmatter Capital, Google for Startups, Khosla Ventures","Inc42 AI Startup Tracker, Feb 2026","Hardware+AI, scaling",Pre-Seed / Seed,,needs-resolution,,
 8,Limechat,Bengaluru,$4.95M,Early Stage,"Stellaris, Google for Startups, Pi Ventures","Inc42 AI Startup Tracker, Feb 2026","300+ brand clients, scaling",Pre-Seed / Seed,,needs-resolution,,
 9,Raga AI,Bengaluru,$4.7M,Early Stage,"Pravega, Pi Ventures, Exfinity","Inc42 AI Startup Tracker, Feb 2026","AI infra, scaling",Pre-Seed / Seed,,needs-resolution,,
-10,BarRaiser,Bengaluru,$4.2M,Early Stage,"021 Capital, Global Founders Capital","Inc42 AI Startup Tracker, Feb 2026","Hiring-tech itself, scaling",Pre-Seed / Seed,,needs-resolution,,
+10,BarRaiser,Bengaluru,$4.2M,Early Stage,"021 Capital, Global Founders Capital","Inc42 AI Startup Tracker, Feb 2026","Hiring-tech itself, scaling",Pre-Seed / Seed,"ats-guess reverted: jobs.lever.co/barraiser is a staffing-agency board (postings include ""Bomb Cleaner"", ""Chief Executive Manager""), not the interview-as-a-service startup -- matches prior finding in docs/JOBS.md",needs-resolution,,
 11,Maieutic Semiconductor,Bengaluru,$4.2M,Early Stage,"Endiya Partners, Exfinity","Inc42 AI Startup Tracker, Feb 2026","Chip design AI, recent raise",Pre-Seed / Seed,,needs-resolution,,
 12,Binocs,Bengaluru,$4M,Early Stage,"Accel, Blume Ventures, BEENEXT, Arkam","Inc42 AI Startup Tracker, Feb 2026",Google Accelerator 2026 cohort,Pre-Seed / Seed,,needs-resolution,,
 13,Zocket,Bengaluru,$3M,Early Stage,"AWS, Google, Kalaari Capital","Inc42 AI Startup Tracker, Feb 2026",AWS GenAI Accelerator alum,Pre-Seed / Seed,,needs-resolution,,
@@ -28,7 +28,7 @@ S.No,Startup,City,Funding Raised (reported),Stage,Key Investors,Source,Hiring Si
 27,Beatoven.AI,Bengaluru,$2.4M,Early Stage,"Entrepreneurs First, Redstart Labs, Google","Inc42 AI Startup Tracker, Feb 2026",~1M registered users,Pre-Seed / Seed,,needs-resolution,,
 28,Vodex,Bengaluru,$2.3M,Early Stage,100X.VC,"Inc42 AI Startup Tracker, Feb 2026","AI sales agents, scaling",Pre-Seed / Seed,,needs-resolution,,
 29,Slang Labs,Bengaluru,$2.2M,Early Stage,"Google, Endiya Partners","Inc42 AI Startup Tracker, Feb 2026","Voice AI, established since 2017",Pre-Seed / Seed,,needs-resolution,,
-30,Gushwork.AI,Bengaluru,$2.1M,Early Stage,"Lightspeed India, NexWave Capital","Inc42 AI Startup Tracker, Feb 2026","Recent raise, scaling",Pre-Seed / Seed,,needs-resolution,,
+30,Gushwork.AI,Bengaluru,$2.1M,Early Stage,"Lightspeed India, NexWave Capital","Inc42 AI Startup Tracker, Feb 2026","Recent raise, scaling",Pre-Seed / Seed,,lever,https://jobs.lever.co/gushwork,"medium (auto-resolved, 13/16 listed roles are India-located)"
 31,Maino AI,Bengaluru,$1.8M,Early Stage,India Quotient,"Inc42 AI Startup Tracker, Feb 2026",Early stage,Pre-Seed / Seed,,needs-resolution,,
 32,QuickAds,Bengaluru,$1.7M,Early Stage,Kae Capital,"Inc42 AI Startup Tracker, Feb 2026",Early stage,Pre-Seed / Seed,,needs-resolution,,
 33,Goodmeetings,Bengaluru,$1.7M,Early Stage,"Chiratae Ventures, Google for Startups","Inc42 AI Startup Tracker, Feb 2026","Sales AI, scaling",Pre-Seed / Seed,,needs-resolution,,
@@ -39,7 +39,7 @@ S.No,Startup,City,Funding Raised (reported),Stage,Key Investors,Source,Hiring Si
 38,Ayna,Bengaluru,$1.5M,Early Stage,Inflexor Ventures,Google for Startups Accelerator India 2026 cohort (announced Jul 2026),Google Accelerator 2026 cohort,Pre-Seed / Seed,,needs-resolution,,
 39,Floworks AI,Bengaluru,$1.5M,Seed Stage,"SenseAI, Y Combinator, Entrepreneur First","Inc42 AI Startup Tracker, Feb 2026",YC-backed sales AI,Pre-Seed / Seed,,needs-resolution,,
 40,Optiq,Bengaluru,$1.5M,Early Stage,"Better Capital, Sunn91, Carya","Inc42 AI Startup Tracker, Feb 2026",Early stage,Pre-Seed / Seed,,needs-resolution,,
-41,Clueso AI,Bengaluru,$1.4M,Early Stage,"Y Combinator, f7 Ventures","Inc42 AI Startup Tracker, Feb 2026",YC-backed,Pre-Seed / Seed,,needs-resolution,,
+41,Clueso AI,Bengaluru,$1.4M,Early Stage,"Y Combinator, f7 Ventures","Inc42 AI Startup Tracker, Feb 2026",YC-backed,Pre-Seed / Seed,,ashby,https://jobs.ashbyhq.com/clueso,"medium (auto-resolved, 4/4 listed roles are India-located)"
 42,Locale AI,Bengaluru,$1.3M,Early Stage,"Better Capital, Chiratae Ventures","Inc42 AI Startup Tracker, Feb 2026",Early stage,Pre-Seed / Seed,,needs-resolution,,
 43,Adya AI,Bengaluru,$1.26M,Early Stage,Google Cloud (Partner/Grant),"Inc42 AI Startup Tracker, Feb 2026",Early stage,Pre-Seed / Seed,,needs-resolution,,
 44,Unscript AI,Bengaluru,$1.25M,Early Stage,"AWS, Exfinity, Entrepreneurs First","Inc42 AI Startup Tracker, Feb 2026","10,000+ companies worked with",Pre-Seed / Seed,,needs-resolution,,
@@ -70,7 +70,7 @@ S.No,Startup,City,Funding Raised (reported),Stage,Key Investors,Source,Hiring Si
 69,Pipeshift,Bengaluru/SF,$2.5M,Early Stage,"Pioneer Fund, Tribe Capital, Y Combinator",Google for Startups Accelerator India 2026 cohort (announced Jul 2026),YC + Google Accelerator 2026,Pre-Seed / Seed,,needs-resolution,,
 70,CreateOS (NodeOps),Bengaluru,$5M,Early Stage,"L1D, Blockchain Founders Fund",Google for Startups Accelerator India 2026 cohort (announced Jul 2026),Google Accelerator 2026 cohort,Pre-Seed / Seed,,needs-resolution,,
 71,Dodo Payments,Bengaluru,Undisclosed,Early Stage,"Antler, 100Unicorns",Google for Startups Accelerator India 2026 cohort (announced Jul 2026),Google Accelerator 2026 cohort,Pre-Seed / Seed,,needs-resolution,,
-72,Bolna AI,Bengaluru,YC-backed (F2025),Pre-Seed/Seed,Y Combinator,Y Combinator India company directory,"21 employees, active",Pre-Seed / Seed,,needs-resolution,,
+72,Bolna AI,Bengaluru,YC-backed (F2025),Pre-Seed/Seed,Y Combinator,Y Combinator India company directory,"21 employees, active",Pre-Seed / Seed,,ashby,https://jobs.ashbyhq.com/bolna,"medium (auto-resolved, 1/1 listed roles are India-located)"
 73,Frekil,Bengaluru,YC-backed (P2025),Pre-Seed,Y Combinator,Y Combinator India company directory,"2 employees, early",Pre-Seed / Seed,,needs-resolution,,
 74,Truffle AI,Bengaluru,YC-backed (W2025),Pre-Seed,Y Combinator,Y Combinator India company directory,"2 employees, early",Pre-Seed / Seed,,needs-resolution,,
 75,CORE (heysol),Bengaluru,YC-backed (S2023),Seed,Y Combinator,Y Combinator India company directory,3 employees,Pre-Seed / Seed,,needs-resolution,,
@@ -111,10 +111,10 @@ S.No,Startup,City,Funding Raised (reported),Stage,Key Investors,Source,Hiring Si
 110,Nyai AI,Pune,Undisclosed,Early Stage,Undisclosed,"Inc42 AI Startup Tracker, Feb 2026","Legal AI, early stage",Pre-Seed / Seed,,needs-resolution,,
 111,FlexifyMe,Pune,Undisclosed,Early Stage,Undisclosed,Google for Startups Accelerator India 2026 cohort (announced Jul 2026),Google Accelerator 2026 cohort,Pre-Seed / Seed,,needs-resolution,,
 112,CodeRabbit,Pune/Walnut Creek,$87.6M,Growth Stage,"CRV, NVentures, Flex Capital","Inc42 AI Startup Tracker, Feb 2026","Well-funded, hiring at scale",Pre-Seed / Seed,,ashby,https://jobs.ashbyhq.com/coderabbit,low
-113,Sarvam AI,Bengaluru,$53M,Series A,"Lightspeed, Peak XV Partners, Khosla Ventures","Inc42 AI Startup Tracker, Feb 2026","High-profile, IndiaAI Mission-backed, scaling fast","Series A/B (Growth - bigger, still reachable teams)",,needs-resolution,,
+113,Sarvam AI,Bengaluru,$53M,Series A,"Lightspeed, Peak XV Partners, Khosla Ventures","Inc42 AI Startup Tracker, Feb 2026","High-profile, IndiaAI Mission-backed, scaling fast","Series A/B (Growth - bigger, still reachable teams)",,ashby,https://jobs.ashbyhq.com/sarvam,"medium (auto-resolved, 62/62 listed roles are India-located)"
 114,Jiffy AI,Bengaluru,$71M,Series B+,"Nexus Venture Partners, Eight Roads, Iron Pillar","Inc42 AI Startup Tracker, Feb 2026","Well-funded, scaling","Series A/B (Growth - bigger, still reachable teams)",,needs-resolution,,
 115,Ema,Bengaluru/Mountain View,$61M,Series B,"Accel, S32, Hitachi Ventures, Wipro Ventures","Inc42 AI Startup Tracker, Feb 2026","Well-funded, scaling","Series A/B (Growth - bigger, still reachable teams)",,ashby,https://jobs.ashbyhq.com/ema,low
-116,Neuron7 AI,Bengaluru,$58.2M,Series B,"UBS Optimus Foundation, 1Crowd","Inc42 AI Startup Tracker, Feb 2026","Well-funded, scaling","Series A/B (Growth - bigger, still reachable teams)",,needs-resolution,,
+116,Neuron7 AI,Bengaluru,$58.2M,Series B,"UBS Optimus Foundation, 1Crowd","Inc42 AI Startup Tracker, Feb 2026","Well-funded, scaling","Series A/B (Growth - bigger, still reachable teams)",,lever,https://jobs.lever.co/neuron7,"medium (auto-resolved, 15/17 listed roles are India-located)"
 117,MathCo,Bengaluru,$50M,Series B,"Brighton Park Capital, Patni Financial Advisors","Inc42 AI Startup Tracker, Feb 2026","Established analytics AI, scaling","Series A/B (Growth - bigger, still reachable teams)",,needs-resolution,,
 118,Atomicwork,Bengaluru,$39M,Series B,"Khosla Ventures, Z47, Blume Ventures","Inc42 AI Startup Tracker, Feb 2026","Well-funded, scaling","Series A/B (Growth - bigger, still reachable teams)",,greenhouse,https://job-boards.greenhouse.io/atomicwork,medium
 119,Nanonets,Bengaluru,$39M,Series B,"Y Combinator, Elevation Capital, Accel","Inc42 AI Startup Tracker, Feb 2026","YC-backed, well-funded","Series A/B (Growth - bigger, still reachable teams)",,greenhouse,https://job-boards.greenhouse.io/nanonets,medium
