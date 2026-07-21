@@ -4,7 +4,6 @@
 import { config } from './config.js';
 import { log } from './logger.js';
 import { dueReminders, markReminderFired, reload } from './store.js';
-import { sendPush } from './push.js';
 
 /**
  * @param {import('whatsapp-web.js').Client} client
@@ -31,7 +30,6 @@ export function startReminderScheduler(client, getNotifyTarget) {
             try {
               await client.sendMessage(chatId, body);
               markReminderFired(r.id);
-              await sendPush('Reminder', r.content || '(no note)', { tags: ['alarm_clock'] });
               log.info(`⏰ delivered reminder R${r.id}`);
             } catch (e) {
               log.warn(`couldn't deliver reminder R${r.id}: ${e?.message}`);

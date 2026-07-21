@@ -75,15 +75,6 @@ export const config = {
     // never re-sent, just not walled into one message.
     maxPerMessage: Number(process.env.JOBS_MAX_PER_MESSAGE || 40),
   },
-  push: {
-    // Real phone push notifications via ntfy.sh — a channel entirely outside
-    // WhatsApp, since WhatsApp suppresses notifications for anything sent by
-    // a linked device under your own account (self-chat *and* groups alike;
-    // it's about who sent it, not which chat). No signup: pick a topic,
-    // subscribe in the ntfy app, set it here. Empty topic = disabled.
-    topic: process.env.NTFY_TOPIC || '',
-    server: (process.env.NTFY_SERVER || 'https://ntfy.sh').replace(/\/+$/, ''),
-  },
   web: {
     // Plain web dashboard for browsing saved items / reminders.
     enabled: bool(process.env.WEB_ENABLED, true),

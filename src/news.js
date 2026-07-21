@@ -10,7 +10,6 @@ import { parseFeed } from './feeds.js';
 import { fetchText, decodeEntities } from './html.js';
 import { enabledSources, TIERS } from './newsSources.js';
 import { addNews, pendingNews, markNewsDigested, getMeta, setMeta, reload } from './store.js';
-import { sendPush } from './push.js';
 import { complete } from './llm/index.js';
 import { trunc } from './format.js';
 
@@ -202,7 +201,6 @@ export async function runDigest() {
   if (!digest) return null;
   return {
     text: digest.text,
-    count: digest.keys.length,
     commit: () => markNewsDigested(digest.keys), // call only after a successful send
   };
 }
@@ -240,7 +238,6 @@ export function startNewsScheduler(client, getNotifyTarget) {
           if (digest) {
             await client.sendMessage(chatId, `${config.agent.replyMarker}\n\n${digest.text}`);
             digest.commit();
-            await sendPush('AI Digest', `${digest.count} new item(s) — open WhatsApp for the full rundown`, { tags: ['newspaper'] });
             log.info('🗞️ morning digest delivered');
           } else {
             log.info('🗞️ nothing new today — no digest sent');
