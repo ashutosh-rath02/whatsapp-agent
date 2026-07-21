@@ -38,6 +38,8 @@ if (!file) {
 }
 const limitArg = process.argv.find((a) => a.startsWith('--limit='));
 const limit = limitArg ? Number(limitArg.split('=')[1]) : Infinity;
+const cityArg = process.argv.find((a) => a.startsWith('--city='));
+const cityFilter = cityArg ? cityArg.split('=')[1].toLowerCase() : null;
 
 const CONCURRENCY = 8;
 const STOPWORDS = new Set([
@@ -123,9 +125,26 @@ if (!nameField) {
   process.exit(1);
 }
 
-const targets = rows.filter((row) => (row.ats || '').trim() === 'needs-resolution').slice(0, limit);
+// A row that's back at needs-resolution *and* carries a note starting
+// "ats-guess reverted" means a match was already tried, hand-verified
+// wrong, and reverted -- re-guessing would almost certainly rediscover
+// the exact same wrong slug (confirmed: BarRaiser -> lever/barraiser did
+// exactly this on a rerun). Skip those rather than re-flagging them.
+const notesField = 'notes' in rows[0] ? 'notes' : 'Applied? / Notes' in rows[0] ? 'Applied? / Notes' : null;
+const wasReverted = (row) => notesField && /^ats-guess reverted/i.test((row[notesField] || '').trim());
 
-console.log(`${path.basename(file)}: ${rows.length} rows, ${targets.length} unresolved (checking up to ${limit === Infinity ? 'all' : limit})`);
+const cityField = 'City' in rows[0] ? 'City' : 'city_presence' in rows[0] ? 'city_presence' : null;
+let targets = rows.filter((row) => (row.ats || '').trim() === 'needs-resolution' && !wasReverted(row));
+if (cityFilter) {
+  if (!cityField) {
+    console.error(`--city given but no City/city_presence column -- header was: ${header.join(', ')}`);
+    process.exit(1);
+  }
+  targets = targets.filter((row) => (row[cityField] || '').toLowerCase().includes(cityFilter));
+}
+targets = targets.slice(0, limit);
+
+console.log(`${path.basename(file)}: ${rows.length} rows, ${targets.length} unresolved${cityFilter ? ` in "${cityFilter}"` : ''} (checking up to ${limit === Infinity ? 'all' : limit})`);
 
 let resolved = 0;
 let checked = 0;
