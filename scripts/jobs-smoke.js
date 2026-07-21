@@ -131,5 +131,51 @@ expect(msg2.text.includes('+4 more this cycle'), 'overflow count correct (7 - 3 
 store.markJobsDelivered(msg2.keys);
 expect(store.pendingJobs().length === 0, 'capped-out postings still marked delivered (never re-sent)');
 
+console.log('\n— job status (applied / not applicable / reset) —');
+{
+  const item = store.addJobs([mk('status1')])[0];
+  expect(item.status === 'open', 'a freshly-added job defaults to open');
+  expect(typeof item.id === 'number', 'a freshly-added job gets a numeric id');
+  store.markJobsDelivered([item.key]); // recentJobs() below only returns delivered jobs
+
+  expect(store.setJobStatus(item.id, 'applied') === true, 'setJobStatus(applied) succeeds');
+  const afterApplied = store.recentJobs(500).find((j) => j.id === item.id);
+  expect(afterApplied.status === 'applied', 'status persisted as applied');
+  expect(typeof afterApplied.statusAt === 'number', 'statusAt timestamp recorded');
+
+  expect(store.setJobStatus(item.id, 'not_applicable') === true, 'status can move from applied -> not_applicable');
+  expect(store.recentJobs(500).find((j) => j.id === item.id).status === 'not_applicable', 'status updated correctly');
+
+  expect(store.setJobStatus(item.id, 'open') === true, 'status can be reset back to open');
+  expect(store.recentJobs(500).find((j) => j.id === item.id).status === 'open', 'reset applied correctly');
+
+  expect(store.setJobStatus(item.id, 'bogus_status') === false, 'an invalid status is rejected, not silently stored');
+  expect(store.recentJobs(500).find((j) => j.id === item.id).status === 'open', 'rejected status leaves the prior value untouched');
+
+  expect(store.setJobStatus(999999, 'applied') === false, 'setting status on a nonexistent id returns false, does not throw');
+}
+
+console.log('\n— job id migration (legacy entries with no id/status) —');
+{
+  const fs = await import('node:fs');
+  const raw = JSON.parse(fs.readFileSync(store.dbPath(), 'utf8'));
+  const beforeCount = raw.jobs.length;
+  // Simulate data written before status-tracking existed: no id, no status.
+  raw.jobs.push({ key: 'legacy:1', company: 'LegacyCo', title: 'Old Posting', url: 'https://e.com/legacy', location: '', fit: 'Good fit', seenAt: Date.now(), deliveredAt: Date.now() });
+  fs.writeFileSync(store.dbPath(), JSON.stringify(raw, null, 2));
+  store.reload();
+
+  const migrated = store.recentJobs(500).find((j) => j.company === 'LegacyCo');
+  expect(migrated !== undefined, 'legacy entry still present after migration');
+  expect(typeof migrated.id === 'number', 'legacy entry backfilled with a numeric id');
+  expect(migrated.status === 'open', 'legacy entry backfilled with status "open"');
+
+  const ids = store.recentJobs(500).map((j) => j.id);
+  expect(new Set(ids).size === ids.length, 'no id collisions after migrating a mix of old and new entries');
+
+  const fresh = store.addJobs([mk('after-migration')])[0];
+  expect(!ids.includes(fresh.id), 'ids assigned after migration continue from the backfilled sequence, no reuse');
+}
+
 console.log(failures === 0 ? '\nAll good ✅' : `\n${failures} check(s) FAILED ❌`);
 process.exit(failures === 0 ? 0 : 1);

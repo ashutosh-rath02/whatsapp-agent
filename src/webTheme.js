@@ -6,11 +6,13 @@ export const CSS = `
 :root{
   --ink:#1a1a1a;--rule:#cfc8b8;--paper:#f6f3ea;--card:#fffdf7;--link:#0b3d91;--faint:#857c63;
   --accent:#8a2e2e;--good:#2f6b3e;--good-bg:#e8f0e6;--stretch:#8a5a12;--stretch-bg:#f3e9d6;
+  --applied:#1a5c8a;--applied-bg:#e3edf5;--skipped:#786e5c;--skipped-bg:#eae5d8;
   --shadow:0 1px 2px rgba(26,20,10,.05),0 1px 1px rgba(26,20,10,.04);
 }
 @media (prefers-color-scheme: dark){
   :root{--ink:#ece6d8;--rule:#3d372c;--paper:#17150f;--card:#211e17;--link:#7fa8e6;--faint:#948a72;
     --accent:#d98a8a;--good:#8fd19e;--good-bg:#1c2b1f;--stretch:#e0b876;--stretch-bg:#2b2318;
+    --applied:#8ab6d9;--applied-bg:#182530;--skipped:#a89d87;--skipped-bg:#2a271f;
     --shadow:0 1px 2px rgba(0,0,0,.35),0 1px 1px rgba(0,0,0,.3);}
 }
 *{box-sizing:border-box}
@@ -48,6 +50,11 @@ button:hover{background:#efe9da;}
 .tag.good{background:var(--good-bg);border-color:var(--good);color:var(--good);}
 .tag.stretch{background:var(--stretch-bg);border-color:var(--stretch);color:var(--stretch);}
 .tag.star{background:var(--stretch-bg);border-color:var(--stretch);color:var(--stretch);}
+.tag.applied{background:var(--applied-bg);border-color:var(--applied);color:var(--applied);}
+.tag.skipped{background:var(--skipped-bg);border-color:var(--skipped);color:var(--skipped);}
+.actions{margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;}
+.card.skipped{opacity:.55;}
+.card.skipped:hover{opacity:1;}
 .dateline{display:flex;align-items:center;gap:12px;margin:30px 0 14px;
   font-variant:small-caps;letter-spacing:1px;color:var(--ink);font-size:15px;}
 .dateline::before,.dateline::after{content:'';flex:0 0 auto;width:28px;border-top:3px double var(--ink);}
@@ -77,6 +84,30 @@ export function page(body, title = 'whatsapp-agent') {
 <title>${title}</title>
 <style>${CSS}</style></head>
 <body>${body}</body></html>`;
+}
+
+// Shared between web.js's homepage card and webPages.js's /jobs day-browse
+// card, so a job posting looks and behaves identically wherever it's shown.
+
+const JOB_STATUS_BADGE = {
+  applied: '<span class="tag applied">applied</span>',
+  not_applicable: '<span class="tag skipped">not applicable</span>',
+};
+
+export function jobStatusBadge(status) {
+  return JOB_STATUS_BADGE[status] || '';
+}
+
+const JOB_STATUS_ROUTE = { applied: 'applied', not_applicable: 'skip' }; // URL segment per status
+
+export function jobStatusActions(j) {
+  const btn = (status, label) =>
+    `<form method="post" action="/jobs/${j.id}/${JOB_STATUS_ROUTE[status] || status}"><button>${label}</button></form>`;
+  const buttons = [];
+  if (j.status !== 'applied') buttons.push(btn('applied', 'applied'));
+  if (j.status !== 'not_applicable') buttons.push(btn('not_applicable', 'not applicable'));
+  if (j.status && j.status !== 'open') buttons.push(btn('open', 'reset'));
+  return `<div class="actions">${buttons.join('')}</div>`;
 }
 
 export function navTabs(active) {

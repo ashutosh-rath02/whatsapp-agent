@@ -15,10 +15,11 @@ import {
   removeItem,
   cancelReminder,
   recentJobs,
+  setJobStatus,
   dbPath,
 } from './store.js';
 import { relTime, fmtAbsolute, escapeHtml } from './format.js';
-import { page, navTabs } from './webTheme.js';
+import { page, navTabs, jobStatusBadge, jobStatusActions } from './webTheme.js';
 import { renderNewsPage, renderJobsPage } from './webPages.js';
 
 function safeEqual(a, b) {
@@ -49,6 +50,18 @@ const redirect = (res, to) => {
   res.end();
 };
 
+// Where a job-status button should send you back to — same page you clicked
+// from (day and all), not always the homepage, so triaging a whole day's
+// list doesn't reset your place after every click.
+function refererPath(req) {
+  try {
+    const u = new URL(req.headers.referer, 'http://localhost');
+    return u.pathname.startsWith('/jobs') ? `${u.pathname}${u.search}` : null;
+  } catch {
+    return null;
+  }
+}
+
 function reminderCard(r, tz) {
   return `<div class="card">
   <div class="row"><span class="id">R${r.id}</span>
@@ -74,11 +87,14 @@ function itemCard(i, tz) {
 }
 
 function jobCard(j, tz) {
-  return `<div class="card">
+  const fitClass = j.fit === 'Good fit' ? 'good' : 'stretch';
+  const cardClass = j.status === 'not_applicable' ? ' skipped' : '';
+  return `<div class="card${cardClass}">
   <div class="row"><span class="id">${escapeHtml(j.company)}</span>
-    <span class="tag">${escapeHtml(j.fit)}</span></div>
+    <span>${jobStatusBadge(j.status)}<span class="tag ${fitClass}">${escapeHtml(j.fit)}</span></span></div>
   <div class="body"><a href="${escapeHtml(j.url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(j.title)}</a></div>
   <div class="meta">${escapeHtml(j.location || '')}${j.location ? ' · ' : ''}${escapeHtml(fmtAbsolute(j.deliveredAt, tz))}</div>
+  ${jobStatusActions(j)}
 </div>`;
 }
 
@@ -165,6 +181,11 @@ export function startWebServer() {
     if (req.method === 'POST' && (m = p.match(/^\/reminders\/(\d+)\/cancel$/))) {
       cancelReminder(Number(m[1]));
       return redirect(res, '/');
+    }
+    if (req.method === 'POST' && (m = p.match(/^\/jobs\/(\d+)\/(applied|skip|open)$/))) {
+      const status = { applied: 'applied', skip: 'not_applicable', open: 'open' }[m[2]];
+      setJobStatus(Number(m[1]), status);
+      return redirect(res, refererPath(req) || '/'); // preserves e.g. /jobs?day=... instead of always bouncing home
     }
     return send(res, 404, 'Not found', 'text/plain');
   });

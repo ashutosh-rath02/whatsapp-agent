@@ -6,7 +6,7 @@ import { config } from './config.js';
 import { recentNews, recentJobs } from './store.js';
 import { TIERS } from './newsSources.js';
 import { fmtAbsolute, escapeHtml } from './format.js';
-import { page, navTabs } from './webTheme.js';
+import { page, navTabs, jobStatusBadge, jobStatusActions } from './webTheme.js';
 
 function dayKey(ts, tz) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: tz || undefined, year: 'numeric', month: '2-digit', day: '2-digit' }).format(ts);
@@ -126,10 +126,13 @@ ${archiveStrip('/news', days, current)}
 
 function jobItemRow(j) {
   const fitClass = j.fit === 'Good fit' ? 'good' : 'stretch';
-  return `<div class="card">
-  <div class="row"><span class="id">${escapeHtml(j.company)}</span><span class="tag ${fitClass}">${escapeHtml(j.fit)}</span></div>
+  const cardClass = j.status === 'not_applicable' ? ' skipped' : '';
+  return `<div class="card${cardClass}">
+  <div class="row"><span class="id">${escapeHtml(j.company)}</span>
+    <span>${jobStatusBadge(j.status)}<span class="tag ${fitClass}">${escapeHtml(j.fit)}</span></span></div>
   <div class="body"><a href="${escapeHtml(j.url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(j.title)}</a></div>
   ${j.location ? `<div class="meta">${escapeHtml(j.location)}</div>` : ''}
+  ${jobStatusActions(j)}
 </div>`;
 }
 
@@ -150,6 +153,7 @@ export function renderJobsPage(query) {
   const dayItems = (byDay.get(current) || []).slice().sort((a, b) => a.company.localeCompare(b.company));
   const companyCount = new Set(dayItems.map((j) => j.company)).size;
   const goodFit = dayItems.filter((j) => j.fit === 'Good fit').length;
+  const applied = dayItems.filter((j) => j.status === 'applied').length;
 
   // A day can hold hundreds of postings (a re-seed, or a big multi-city
   // posting spree from one company) — cap what actually renders so the
@@ -166,7 +170,7 @@ export function renderJobsPage(query) {
 </header>
 
 ${dayNav('/jobs', tz, { current, newer, older })}
-<div class="stat-row"><span><strong>${dayItems.length}</strong> postings</span><span><strong>${companyCount}</strong> companies</span><span><strong>${goodFit}</strong> good fit</span></div>
+<div class="stat-row"><span><strong>${dayItems.length}</strong> postings</span><span><strong>${companyCount}</strong> companies</span><span><strong>${goodFit}</strong> good fit</span><span><strong>${applied}</strong> applied</span></div>
 ${items.map(jobItemRow).join('')}
 ${overflow > 0 ? `<div class="empty">+${overflow} more from this day — narrowed to the first ${RENDER_CAP}, alphabetical by company.</div>` : ''}
 ${archiveStrip('/jobs', days, current)}

@@ -88,6 +88,47 @@ expect(jobsToday.includes('&lt;b&gt;Corp&lt;/b&gt;'), 'company name is HTML-esca
 expect(!jobsToday.includes('Beta Inc'), 'does not show yesterday\'s posting on the default day');
 expect(jobsToday.includes('tag good'), 'Good fit renders with the good-fit class');
 
+console.log('\n— job status: open (default) shows both action buttons, no badge —');
+const j1id = store.recentJobs(500).find((j) => j.company.includes('Acme')).id;
+{
+  const html = renderJobsPage({});
+  expect(html.includes(`/jobs/${j1id}/applied`), 'open job offers an "applied" action');
+  expect(html.includes(`/jobs/${j1id}/skip`), 'open job offers a "not applicable" action');
+  expect(!html.includes(`/jobs/${j1id}/open`), 'open job does not offer a redundant "reset to open" action');
+  expect(!html.includes('tag applied') && !html.includes('tag skipped'), 'no status badge shown while still open');
+}
+
+console.log('\n— job status: applied —');
+store.setJobStatus(j1id, 'applied');
+{
+  const html = renderJobsPage({});
+  const dash = renderDashboard();
+  expect(html.includes('tag applied">applied<'), '"applied" badge shown on /jobs');
+  expect(dash.includes('tag applied">applied<'), 'same "applied" badge shown on the homepage card');
+  expect(!html.includes(`/jobs/${j1id}/applied`), 'no longer offers "applied" again once already applied');
+  expect(html.includes(`/jobs/${j1id}/skip`), 'still offers "not applicable" as an alternative');
+  expect(html.includes(`/jobs/${j1id}/open`), 'now offers "reset" back to open');
+  expect(!html.includes('card skipped'), 'applied card is not visually dimmed (dimming is only for not_applicable)');
+}
+
+console.log('\n— job status: not applicable (dims the card) —');
+store.setJobStatus(j1id, 'not_applicable');
+{
+  const html = renderJobsPage({});
+  expect(html.includes('tag skipped">not applicable<'), '"not applicable" badge shown');
+  expect(html.includes('card skipped'), 'card gets the dimming class once marked not applicable');
+  expect(html.includes(`/jobs/${j1id}/applied`), 'still offers "applied" as an alternative');
+  expect(html.includes(`/jobs/${j1id}/open`), 'still offers "reset" back to open');
+}
+
+console.log('\n— job status: reset back to open —');
+store.setJobStatus(j1id, 'open');
+{
+  const html = renderJobsPage({});
+  expect(!html.includes('tag applied') && !html.includes('tag skipped'), 'badge cleared after reset');
+  expect(!html.includes('card skipped'), 'dimming cleared after reset');
+}
+
 console.log('\n— jobs page: day navigation —');
 const jobsYesterday = renderJobsPage({ day: yKey });
 expect(jobsYesterday.includes('Beta Inc'), 'navigating to ?day=<yesterday> shows that posting');

@@ -99,6 +99,13 @@ A plain, no-JS web app — same "old-school newspaper" theme throughout
 | `/news` | AI digest browsable **by day**, grouped into the same tiers as the WhatsApp digest, with prev/next-day nav and a recent-editions strip |
 | `/jobs` | delivered job postings browsable **by day**, `Good fit`/`Stretch` badges, same day nav |
 
+Every job posting has one-click triage buttons — **applied** / **not
+applicable** / **reset** — on both `/` and `/jobs`. A posting marked *not
+applicable* stays visible but visually dimmed rather than disappearing, so
+a misclick is always reversible. Status is purely for your own tracking —
+it never affects delivery or dedup, so marking something doesn't change
+what the agent sends you.
+
 ```
 http://<your-server-ip>:8080
 ```

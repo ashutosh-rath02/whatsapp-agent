@@ -12,7 +12,7 @@ const AUTH_PATH = process.env.WWEBJS_AUTH_PATH || '.wwebjs_auth';
 const DATA_DIR = process.env.DATA_DIR || path.dirname(path.resolve(AUTH_PATH));
 const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'agent-data.json');
 
-const EMPTY = () => ({ items: [], reminders: [], news: [], jobs: [], meta: {}, seq: { item: 0, reminder: 0 } });
+const EMPTY = () => ({ items: [], reminders: [], news: [], jobs: [], meta: {}, seq: { item: 0, reminder: 0, job: 0 } });
 
 let state = null;
 
@@ -48,6 +48,25 @@ function load() {
   state.jobs ||= [];
   state.meta ||= {};
   state.seq ||= { item: 0, reminder: 0 };
+  state.seq.job ||= 0;
+
+  // Migration: jobs from before status-tracking existed have no id/status.
+  // Backfill in place so old and new entries share one consistent shape.
+  let migrated = false;
+  for (const j of state.jobs) {
+    if (j.id === undefined) {
+      j.id = ++state.seq.job;
+      migrated = true;
+    } else if (j.id > state.seq.job) {
+      state.seq.job = j.id;
+    }
+    if (j.status === undefined) {
+      j.status = 'open';
+      migrated = true;
+    }
+  }
+  if (migrated) persist(); // safe: state is already assigned, so persist()'s own load() returns it directly
+
   return state;
 }
 
@@ -242,7 +261,7 @@ export function addJobs(items) {
   for (const it of items) {
     if (!it.key || seen.has(it.key)) continue;
     seen.add(it.key);
-    const entry = { ...it, seenAt: Date.now(), deliveredAt: null };
+    const entry = { ...it, id: ++s.seq.job, status: 'open', seenAt: Date.now(), deliveredAt: null };
     s.jobs.push(entry);
     added.push(entry);
   }
@@ -279,6 +298,21 @@ export function markJobsDelivered(keys) {
     }
   }
   if (hit) persist();
+}
+
+// Triage state a user sets by hand from the dashboard — purely informational,
+// never affects delivery/dedup (that's governed by deliveredAt/key elsewhere).
+export const JOB_STATUSES = ['open', 'applied', 'not_applicable'];
+
+export function setJobStatus(id, status) {
+  if (!JOB_STATUSES.includes(status)) return false;
+  const s = load();
+  const j = s.jobs.find((x) => x.id === id);
+  if (!j) return false;
+  j.status = status;
+  j.statusAt = Date.now();
+  persist();
+  return true;
 }
 
 // ── Meta (key/value) ─────────────────────────────────────────────────────────
