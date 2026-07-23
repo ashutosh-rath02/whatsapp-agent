@@ -10,7 +10,15 @@ export async function fetchJobs({ careerUrl }) {
   const api = `https://${tenant}.${wd}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`;
   const res = await fetchText(api, {
     timeout: 12000,
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      accept: 'application/json',
+      // Workday started rejecting requests with a bare 400 once these were
+      // missing -- it now checks that the request looks like it came from
+      // the tenant's own careers page, not just any client with the URL.
+      origin: `https://${tenant}.${wd}.myworkdayjobs.com`,
+      referer: `https://${tenant}.${wd}.myworkdayjobs.com/${site}`,
+    },
     method: 'POST',
     body: JSON.stringify({ appliedFacets: {}, limit: 50, offset: 0, searchText: '' }),
   });

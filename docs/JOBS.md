@@ -328,6 +328,51 @@ rows didn't have that habit yet).
 Net: **123 → 137 pollable companies**, including real hires-in-India
 signal like Groww, Airbnb India, Sarvam AI, Zeta, Turing.com India Hub.
 
+### Phase 2c — silent-failure audit (2026-07-23)
+
+User asked why no jobs showed up for a stretch of ~12h despite the poller
+logging clean "collected: 0" every cycle with no errors visible. Root
+cause: per-company fetch failures are only `log.debug`'d, which the
+default log level suppresses -- a company can fail 100% of the time and
+the logs look identical to "genuinely nothing new." Ran `collectJobs()`
+manually against the live store to get the real per-cycle failure list:
+**28 of 141 companies (20%) were failing every single cycle.**
+
+Two distinct root causes:
+- **All 11 Workday-tagged companies were failing (100%)** -- Workday
+  started requiring `Origin`/`Referer` headers matching the tenant's own
+  site at some point after this adapter was built; a bare POST with just
+  `content-type` now gets a contentless `HTTP 400`. Fixed in
+  `src/ats/workday.js`. Note: even with the fix, Workday's edge still
+  occasionally 400s a well-formed request (confirmed by re-running the
+  identical request seconds apart and getting 400 then 200) -- flaky
+  infra, not something fixable client-side; the 25-min poll cycle
+  naturally retries it.
+- **7 companies' Greenhouse/Lever/Ashby slugs had drifted** since the
+  original Phase 1 probe: Perplexity (`perplexity-ai`→`perplexity`),
+  Character.AI (`charactertechnologiesinc`→`ashby/character`, moved off
+  Greenhouse entirely), Cursor/Anysphere (`anysphere`→`cursor`), Runway
+  (`runwayml`→`runway`), Fireworks AI (`fireworks-ai`→`fireworksai`),
+  DevRev (`ashby/devrev`→`greenhouse/devrev`, moved ATS), Anduril
+  (`anduril`→`andurilindustries`). Found by trying obvious slug variants
+  and hand-verifying job content before trusting each one (same discipline
+  as the Bulk resolution pass above) -- e.g. Cursor's new slug alone
+  turned up 119 open roles.
+- Also fixed a parsing edge case: Quantiphi's `career_url` had an
+  `/en-US/` locale prefix the Workday regex can't see past (it only
+  captures the first path segment) -- corrected to the bare site slug.
+
+**Still broken, not resolved this pass** (left as `needs-resolution` /
+unfixed, no working guess found): Adobe, HPE, Fractal Analytics, Bank of
+America, Citi, S&P Global (all tagged `workday` but their `career_url` is
+a generic careers page, not a real `*.myworkdayjobs.com` link -- never
+actually resolved in Phase 1, just guessed at); JPMorgan Chase (Oracle
+HCM, same issue); Qualcomm and Splunk (real Workday URLs, still 422 even
+with the header fix -- likely need a session cookie or different site
+slug entirely, not just headers); Deel, Together AI, Groq, Windsurf
+(Codeium), Clari, Simplismart, Rocketlane, Multiplier, Multi On (still
+404 on every slug guess tried).
+
 ### Phase 3 (stretch, not done)
 
 Hand-picked scraping for a handful of true-custom high-priority companies

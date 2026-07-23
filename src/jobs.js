@@ -54,7 +54,12 @@ export async function collectJobs() {
   // and each ATS call is a single small JSON fetch.
   await Promise.all(Array.from({ length: 10 }, worker));
 
-  if (failed.length) log.debug(`jobs: ${failed.length}/${companies.length} companies failed this cycle`);
+  // Individual reasons stay at debug (too noisy at 10-30 failures/cycle to
+  // warn on each), but the count needs to be visible without debug logging
+  // on -- a company silently failing every cycle looks identical to "found
+  // nothing new" otherwise, and that took a manual SSH investigation to
+  // catch once (28/141 companies, see docs/JOBS.md Phase 2c).
+  if (failed.length) log.warn(`jobs: ${failed.length}/${companies.length} companies failed this cycle`);
   log.info(`💼 collected: ${added} new relevant posting(s) from ${companies.length} companies`);
   return { added, polled: companies.length, failed };
 }
