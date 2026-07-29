@@ -1,6 +1,10 @@
 import { fetchText } from '../html.js';
 
-const HOST_RE = /https?:\/\/([a-z0-9-]+\.fa\.[a-z0-9.]+\.oraclecloud\.com)/i;
+// The region/pod segment between "fa." and "oraclecloud.com" isn't always
+// present -- e.g. JPMorgan's real host is jpmc.fa.oraclecloud.com, with
+// nothing between "fa." and ".oraclecloud.com", while others use a segment
+// like "fa.ocs.oraclecloud.com". Make it optional rather than required.
+const HOST_RE = /https?:\/\/([a-z0-9-]+\.fa\.(?:[a-z0-9-]+\.)?oraclecloud\.com)/i;
 const SITE_RE = /\/sites\/([^/?#]+)/i;
 
 /**
