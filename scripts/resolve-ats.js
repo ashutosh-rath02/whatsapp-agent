@@ -40,6 +40,8 @@ const limitArg = process.argv.find((a) => a.startsWith('--limit='));
 const limit = limitArg ? Number(limitArg.split('=')[1]) : Infinity;
 const cityArg = process.argv.find((a) => a.startsWith('--city='));
 const cityFilter = cityArg ? cityArg.split('=')[1].toLowerCase() : null;
+const sourceArg = process.argv.find((a) => a.startsWith('--source='));
+const sourceFilter = sourceArg ? sourceArg.split('=')[1].toLowerCase() : null;
 
 const CONCURRENCY = 8;
 const STOPWORDS = new Set([
@@ -142,9 +144,16 @@ if (cityFilter) {
   }
   targets = targets.filter((row) => (row[cityField] || '').toLowerCase().includes(cityFilter));
 }
+if (sourceFilter) {
+  if (!('source' in rows[0])) {
+    console.error(`--source given but no source column -- header was: ${header.join(', ')}`);
+    process.exit(1);
+  }
+  targets = targets.filter((row) => (row.source || '').toLowerCase().includes(sourceFilter));
+}
 targets = targets.slice(0, limit);
 
-console.log(`${path.basename(file)}: ${rows.length} rows, ${targets.length} unresolved${cityFilter ? ` in "${cityFilter}"` : ''} (checking up to ${limit === Infinity ? 'all' : limit})`);
+console.log(`${path.basename(file)}: ${rows.length} rows, ${targets.length} unresolved${cityFilter ? ` in "${cityFilter}"` : ''}${sourceFilter ? ` from source~"${sourceFilter}"` : ''} (checking up to ${limit === Infinity ? 'all' : limit})`);
 
 let resolved = 0;
 let checked = 0;
