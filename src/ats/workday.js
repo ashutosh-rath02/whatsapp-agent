@@ -7,17 +7,27 @@ export async function fetchJobs({ careerUrl }) {
   const m = careerUrl.match(WORKDAY_RE);
   if (!m) throw new Error('not a myworkdayjobs.com URL — tenant/site not derivable');
   const [, tenant, wd, site] = m;
+  const pageUrl = `https://${tenant}.${wd}.myworkdayjobs.com/${site}`;
+
+  // Workday tightened bot detection again: Origin/Referer headers alone (the
+  // prior fix) stopped being enough and every request started 400ing, even
+  // for tenants confirmed working earlier -- it now also checks for a
+  // session cookie that's only ever handed out by loading the career page
+  // first. So load the page (throwaway, just for its Set-Cookie) before the
+  // real API call.
+  const page = await fetchText(pageUrl, { timeout: 12000 });
+  const cookies = page.headers?.getSetCookie ? page.headers.getSetCookie() : [];
+  const cookieHeader = cookies.map((c) => c.split(';')[0]).join('; ');
+
   const api = `https://${tenant}.${wd}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`;
   const res = await fetchText(api, {
     timeout: 12000,
     headers: {
       'content-type': 'application/json',
       accept: 'application/json',
-      // Workday started rejecting requests with a bare 400 once these were
-      // missing -- it now checks that the request looks like it came from
-      // the tenant's own careers page, not just any client with the URL.
-      origin: `https://${tenant}.${wd}.myworkdayjobs.com`,
-      referer: `https://${tenant}.${wd}.myworkdayjobs.com/${site}`,
+      origin: pageUrl,
+      referer: pageUrl,
+      ...(cookieHeader && { cookie: cookieHeader }),
     },
     method: 'POST',
     body: JSON.stringify({ appliedFacets: {}, limit: 50, offset: 0, searchText: '' }),

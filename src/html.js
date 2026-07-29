@@ -24,7 +24,7 @@ export async function fetchText(url, { timeout = 15000, headers = {}, method = '
       signal: ctrl.signal,
     });
     const text = await res.text();
-    return { ok: res.ok, status: res.status, text, finalUrl: res.url };
+    return { ok: res.ok, status: res.status, text, finalUrl: res.url, headers: res.headers };
   } finally {
     clearTimeout(to);
   }
