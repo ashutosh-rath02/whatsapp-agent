@@ -31,6 +31,26 @@ import * as ashby from '../src/ats/ashby.js';
 import * as smartrecruiters from '../src/ats/smartrecruiters.js';
 import * as workable from '../src/ats/workable.js';
 
+const today = new Date().toISOString().slice(0, 10);
+
+// This repo lives in a OneDrive-synced folder -- OneDrive transiently locks
+// files mid-sync, which turns a plain writeFileSync into an uncaught EBUSY
+// that kills the whole run (lost a batch's progress past the last
+// checkpoint to this once already). Retry through it instead of crashing.
+function writeCsvSafe(file, rows, header) {
+  const data = stringifyCsv(rows, header);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      fs.writeFileSync(file, data);
+      return;
+    } catch (e) {
+      if (e.code !== 'EBUSY' || attempt === 4) throw e;
+      const waitMs = 300 * (attempt + 1);
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, waitMs);
+    }
+  }
+}
+
 const file = process.argv[2];
 if (!file) {
   console.error('usage: node scripts/resolve-ats.js <path-to-csv> [--limit=N]');
@@ -43,7 +63,8 @@ const cityFilter = cityArg ? cityArg.split('=')[1].toLowerCase() : null;
 const sourceArg = process.argv.find((a) => a.startsWith('--source='));
 const sourceFilter = sourceArg ? sourceArg.split('=')[1].toLowerCase() : null;
 
-const CONCURRENCY = 8;
+const concurrencyArg = process.argv.find((a) => a.startsWith('--concurrency='));
+const CONCURRENCY = concurrencyArg ? Number(concurrencyArg.split('=')[1]) : 8;
 const STOPWORDS = new Set([
   'inc', 'labs', 'lab', 'technologies', 'technology', 'tech', 'india', 'pvt', 'private',
   'ltd', 'limited', 'llp', 'solutions', 'systems', 'software', 'group', 'ai', 'the',
@@ -168,13 +189,28 @@ await pool(targets, async (row) => {
     row.career_url = hit.careerUrl;
     row.confidence = hit.confidence;
     console.log(`  ✓ ${row[nameField]} -> ${hit.ats} (${hit.careerUrl})`);
+  } else {
+    // Mark as tried-and-failed, not just leaving it at needs-resolution --
+    // otherwise a row that genuinely has no board on any of these platforms
+    // gets re-tested (and re-fails, deterministically) on every future run
+    // against this file. With --limit on a large low-yield batch this made
+    // each rerun mostly re-check the same already-failed rows instead of
+    // reaching untested ones, since the target window only advances by
+    // however many succeeded that round.
+    row.ats = 'no-match';
+    row.confidence = `no match found on any known platform (checked ${today})`;
   }
   if (checked % 25 === 0) {
     const elapsedS = Math.round((Date.now() - started) / 1000);
     console.log(`  … ${checked}/${targets.length} checked, ${resolved} resolved, ${elapsedS}s elapsed`);
   }
+  // Flush to disk periodically, not just at the end -- a long run against a
+  // large batch got silently killed (background-task duration cap) after
+  // ~29 minutes with 226 real resolutions found and none of them saved,
+  // since the old write-once-at-the-end meant a kill lost everything.
+  if (checked % 50 === 0) writeCsvSafe(file, rows, header);
 }, CONCURRENCY);
 
-fs.writeFileSync(file, stringifyCsv(rows, header));
+writeCsvSafe(file, rows, header);
 const elapsedS = Math.round((Date.now() - started) / 1000);
 console.log(`\nDone in ${elapsedS}s: ${resolved}/${targets.length} newly resolved, written back to ${file}`);
